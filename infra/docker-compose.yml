@@ -1,0 +1,36 @@
+# infra/docker-compose.yml
+
+services:
+  gateway:
+    image: alpine:latest
+    command: tail -f /dev/null
+    container_name: api_gateway
+    healthcheck:
+      test: ["CMD", "echo", "Gateway is alive"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  resource-service:
+    image: alpine:latest
+    command: tail -f /dev/null
+    container_name: resource_service
+    healthcheck:
+      test: ["CMD", "echo", "Resource Service is alive"]
+      interval: 10s
+
+  auth-server:
+    image: alpine:latest
+    command: tail -f /dev/null
+    container_name: auth_server
+    healthcheck:
+      test: ["CMD", "echo", "Auth Server is alive"]
+      interval: 10s
+
+  dashboard:
+    image: alpine:latest
+    command: tail -f /dev/null
+    container_name: security_dashboard
+    healthcheck:
+      test: ["CMD", "echo", "Dashboard is alive"]
+      interval: 10s
