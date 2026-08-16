@@ -4,27 +4,27 @@
 graph TD
     %% Trust Boundaries
     subgraph "Public / Untrusted Zone"
-        Client[("External Client<br>(Browser/Postman)")]
-        Attacker(("Attacker Toolkit<br>(Python Scripts)"))
+        Client[("External Client<br>Browser / Postman")]
+        Attacker(("Attacker Toolkit<br>Python Scripts"))
     end
 
     subgraph "DMZ / API Gateway Zone"
-        Gateway["API Gateway<br>(Node.js/Express)"]
-        Dashboard["Security Dashboard<br>(React)"]
-        Auth["Auth Server<br>(Node.js)"]
+        Gateway["API Gateway<br>Node.js / Express"]
+        Dashboard["Security Dashboard<br>React"]
+        Auth["Auth Server<br>Node.js"]
     end
 
     subgraph "Secure Internal Zone (Zero Trust)"
-        Resource["Resource Service<br>(Python/FastAPI)"]
-        Vault[("HashiCorp Vault<br>(Secrets)")]
-        Logs[("Loki + Grafana<br>(Audit Logs)")]
-        Redis[("Redis<br>(Rate Limits & Nonces)")]
+        Resource["Resource Service<br>Python / FastAPI"]
+        Vault[("HashiCorp Vault<br>Secrets")]
+        Logs[("Loki + Grafana<br>Audit Logs")]
+        Redis[("Redis<br>Rate Limits & Nonces")]
     end
 
     %% Client Interactions
-    Client -->|1. POST /auth/login (Returns JWT)| Auth
+    Client -->|1. POST /auth/login - Returns JWT| Auth
     Client -->|2. HTTPS Request + Bearer JWT| Gateway
-    Attacker -.->|Simulated Replay, MITM, Injection Attacks| Gateway
+    Attacker -.->|Simulated Replay and Injection Attacks| Gateway
     Dashboard -->|Reads /admin/audit-logs| Gateway
 
     %% Gateway Operations
@@ -35,8 +35,8 @@ graph TD
     Resource <-->|Validate Nonce cache| Redis
     
     %% Secrets & Observability
-    Vault -.->|Injects Keys & Certs at startup| Gateway
-    Vault -.->|Injects Keys & Certs at startup| Resource
+    Vault -.->|Injects Keys and Certs| Gateway
+    Vault -.->|Injects Keys and Certs| Resource
     
     Gateway -.->|Emits Structured JSON| Logs
     Resource -.->|Emits Structured JSON| Logs
