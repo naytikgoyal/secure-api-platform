@@ -1,0 +1,264 @@
+
+######################################################################
+# Running attack_replay.py
+######################################################################
+======================================================================
+  attack_replay.py -- Replay a captured, validly-signed request
+  Target: https://localhost:3000
+  Time:   2026-10-28 19:22:38
+======================================================================
+(HMAC key obtained from Vault secret/hmac-signing)
+
+1. Sending ORIGINAL request (fresh nonce f811f366eec5...)
+   -> HTTP 200
+
+2. IMMEDIATELY replaying the IDENTICAL request (same signature, same nonce)
+   -> HTTP 401: {"error":"unauthorized","message":"Request already processed (replay detected)."}
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Original request succeeds (sanity check -- proves the signature itself was valid)
+    HTTP 200
+[PASS (attack blocked)] Immediate replay of identical signed request is rejected
+    HTTP 401: {"error":"unauthorized","message":"Request already processed (replay detected)."}
+----------------------------------------------------------------------
+2/2 attacks blocked
+======================================================================
+
+######################################################################
+# Running attack_token_forgery.py
+######################################################################
+======================================================================
+  attack_token_forgery.py -- JWT forgery techniques
+  Target: https://localhost:3000
+  Time:   2026-10-28 19:22:38
+======================================================================
+
+1. Wrong-key forgery: sign a token with an attacker-generated RSA key
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+2. 'alg: none' attack: unsigned token claiming no signature is required
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+(public key obtained from Vault secret/jwt-signing)
+
+3. Algorithm confusion: use the KNOWN PUBLIC key as an HMAC secret (RS256 -> HS256)
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Wrong-key forgery (attacker's own RSA keypair) is rejected
+    HTTP 401 -- token claimed admin scope, signed with a key the server never trusted
+[PASS (attack blocked)] 'alg: none' token is rejected (algorithm is pinned server-side)
+    HTTP 401 -- gateway pins algorithms=['RS256'] in jwt.verify(), so 'none' is never accepted
+[PASS (attack blocked)] Algorithm confusion (public key used as HMAC secret) is rejected
+    HTTP 401 -- gateway pins algorithms=['RS256'], so an HS256-signed token is never even attempted against the public key as an HMAC secret
+----------------------------------------------------------------------
+3/3 attacks blocked
+======================================================================
+
+######################################################################
+# Running attack_injection.py
+######################################################################
+======================================================================
+  attack_injection.py -- Structural validation + content-pattern handling
+  Target: https://localhost:3000
+  Time:   2026-10-28 19:22:38
+======================================================================
+
+--- STRUCTURAL violations (must be rejected, 400/422) ---
+
+NoSQL injection operator ($gt) sent as item value
+   -> HTTP 422: {"detail":[{"type":"string_type","loc":["body","item"],"msg":"Input should be a valid string","input":{"$gt":""}}]}
+
+NoSQL injection operator ($ne) sent as item value
+   -> HTTP 422: {"detail":[{"type":"string_type","loc":["body","item"],"msg":"Input should be a valid string","input":{"$ne":null}}]}
+
+Oversized string (10000 chars)
+   -> HTTP 422: {"detail":[{"type":"string_too_long","loc":["body","item"],"msg":"String should have at most 200 characters","input":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+--- CONTENT patterns (correctly accepted as opaque data -- see script docstring) ---
+
+SQLi-looking string (classic)
+   -> HTTP 201: {"id":"3bfbbfa0-148d-44e3-b463-ed44a64b60d9","item":"'; DROP TABLE orders; --","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T13:52:38.946198+00:00"}
+
+SQLi-looking string (union)
+   -> HTTP 201: {"id":"09bf66f3-6e58-4de5-bac6-32fb3235b4e5","item":"' UNION SELECT * FROM users --","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T13:52:38.957054+00:00"}
+
+XSS-looking string (script tag)
+   -> HTTP 201: {"id":"16bcaef7-4a56-4cb8-a8d2-c5f0bae33e03","item":"<script>alert('xss')</script>","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T13:52:38.967280+00:00"}
+
+XSS-looking string (img onerror)
+   -> HTTP 201: {"id":"32c64190-e197-4144-ae33-ff957035eaa6","item":"<img src=x onerror=alert(1)>","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T13:52:38.977405+00:00"}
+
+Path traversal-looking string
+   -> HTTP 201: {"id":"79c77e92-c155-4efa-b8d1-45d0a0aee973","item":"../../../../etc/passwd","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T13:52:38.987329+00:00"}
+
+Format string
+   -> HTTP 201: {"id":"a3f77ba5-a0ca-4dd8-9cd8-b018b6c59b75","item":"%s%s%s%s%s%s%s%s","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T13:52:38.997732+00:00"}
+
+--- Null byte (the one legitimate content-based rejection rule) ---
+
+Null byte injection
+   -> HTTP 422: {"detail":[{"type":"value_error","loc":["body","item"],"msg":"Value error, must not contain null bytes","input":"item\u0000.txt","ctx":{"error":{}}}]}
+
+--- Other structural checks ---
+
+Negative quantity
+   -> HTTP 422: {"detail":[{"type":"greater_than_equal","loc":["body","quantity"],"msg":"Input should be greater than or equal to 1","input":-999,"ctx":{"ge":1}}]}
+
+Malformed JSON body
+   -> HTTP 400: {"error":"request_failed","message":"Invalid request."}
+
+--- DATABASE LAYER (Sprint 10): does user input ever become SQL? ---
+
+Baseline: naytik has 20 order(s) stored
+
+GET  /orders/<"' OR '1'='1">
+   -> HTTP 404: {"detail":"Order not found"}
+
+GET  /orders/<"'; DROP TABLE orders; --">
+   -> HTTP 404: {"detail":"Order not found"}
+
+GET  /orders/<'1; DELETE FROM orders'>
+   -> HTTP 404: {"detail":"Order not found"}
+
+DELETE /orders/<' OR '1'='1>
+   -> HTTP 404: {"detail":"Order not found"}
+
+Positive control: admin filtering owner_id=user-naytik -> 20 row(s)
+Attack: owner_id=' OR '1'='1 -> HTTP 200, 0 row(s)
+
+After attacks: naytik has 20 order(s) stored (was 20)
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] NoSQL injection operator ($gt) sent as item value is rejected (structural violation)
+    HTTP 422
+[PASS (attack blocked)] NoSQL injection operator ($ne) sent as item value is rejected (structural violation)
+    HTTP 422
+[PASS (attack blocked)] Oversized string (10000 chars) is rejected (structural violation)
+    HTTP 422
+[PASS (attack blocked)] SQLi-looking string (classic) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] SQLi-looking string (union) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] XSS-looking string (script tag) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] XSS-looking string (img onerror) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] Path traversal-looking string is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] Format string is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] Null byte injection is rejected
+    HTTP 422
+[PASS (attack blocked)] Negative quantity is rejected (ge=1 constraint)
+    HTTP 422
+[PASS (attack blocked)] Malformed JSON body is rejected cleanly, not a 500
+    HTTP 400
+[PASS (attack blocked)] Path-parameter injection "' OR '1'='1" returns a clean 404 (reaches the DB layer, matches nothing)
+    HTTP 404 (401 would mean the request was stopped by signature verification instead of the layer under test -- that exact mismatch was a real bug found in Sprint 10)
+[PASS (attack blocked)] Path-parameter injection "'; DROP TABLE orders; --" returns a clean 404 (reaches the DB layer, matches nothing)
+    HTTP 404 (401 would mean the request was stopped by signature verification instead of the layer under test -- that exact mismatch was a real bug found in Sprint 10)
+[PASS (attack blocked)] Path-parameter injection '1; DELETE FROM orders' returns a clean 404 (reaches the DB layer, matches nothing)
+    HTTP 404 (401 would mean the request was stopped by signature verification instead of the layer under test -- that exact mismatch was a real bug found in Sprint 10)
+[PASS (attack blocked)] DELETE with an injected id deletes nothing (404)
+    HTTP 404
+[PASS (attack blocked)] Admin owner_id=' OR '1'='1 returns NO rows (treated as a literal owner name, not SQL)
+    control returned 20 row(s) (proves the table isn't just empty); attack returned 0
+[PASS (attack blocked)] No order was deleted or altered by any injection attempt (table + rows intact)
+    before=20, after=20
+----------------------------------------------------------------------
+18/18 attacks blocked
+======================================================================
+
+######################################################################
+# Running attack_mitm_downgrade.py
+######################################################################
+======================================================================
+  attack_mitm_downgrade.py -- Plaintext + TLS downgrade attempts
+  Target: https://localhost:3000
+  Time:   2026-10-28 19:22:39
+======================================================================
+
+1. Attempting PLAINTEXT HTTP connection to localhost:3000 (should be refused/reset)
+   Got a response (0 bytes). Looks like valid HTTP: False
+
+2. Attempting to negotiate TLS 1.0
+   Handshake REFUSED (expected): [SSL] internal error (_ssl.c:1082)
+
+2. Attempting to negotiate TLS 1.1
+   Handshake REFUSED (expected): [SSL] internal error (_ssl.c:1082)
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Plaintext HTTP request to the HTTPS port is refused (not parsed as valid HTTP)
+    Server responded with 0 bytes; valid-HTTP-looking: False
+[PASS (attack blocked)] TLS 1.0 handshake is refused
+    SSLError: [SSL] internal error (_ssl.c:1082)
+[PASS (attack blocked)] TLS 1.1 handshake is refused
+    SSLError: [SSL] internal error (_ssl.c:1082)
+----------------------------------------------------------------------
+3/3 attacks blocked
+======================================================================
+
+######################################################################
+# Running attack_bruteforce.py
+######################################################################
+======================================================================
+  attack_bruteforce.py -- Credential brute-forcing + enumeration
+  Target: https://localhost:3000
+  Time:   2026-10-28 19:22:39
+======================================================================
+
+1. Account enumeration check: wrong password vs. nonexistent user
+   wrong password: HTTP 401 {'error': 'invalid_credentials', 'message': 'Incorrect username or password.'}
+   no such user:   HTTP 401 {'error': 'invalid_credentials', 'message': 'Incorrect username or password.'}
+
+   (waiting 2s to avoid cross-contaminating with the enumeration check above)
+
+2. Brute-forcing 'naytik' with 13 common passwords, rapid-fire
+   attempt  1 (password='password'): HTTP 401
+   attempt  2 (password='123456'): HTTP 401
+   attempt  3 (password='password123'): HTTP 200
+   attempt  4 (password='admin'): HTTP 401
+   attempt  5 (password='letmein'): HTTP 401
+   attempt  6 (password='qwerty'): HTTP 429 <-- BLOCKED
+   attempt  7 (password='welcome'): HTTP 429 <-- BLOCKED
+   attempt  8 (password='monkey'): HTTP 429 <-- BLOCKED
+   attempt  9 (password='dragon'): HTTP 429 <-- BLOCKED
+   attempt 10 (password='master'): HTTP 429 <-- BLOCKED
+   attempt 11 (password='naytik2023'): HTTP 429 <-- BLOCKED
+   attempt 12 (password='Password1!'): HTTP 429 <-- BLOCKED
+   attempt 13 (password='changeme'): HTTP 429 <-- BLOCKED
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Wrong password and nonexistent user return identical responses (no enumeration)
+    status match=True, body match=True
+[PASS (attack blocked)] Rapid-fire login attempts trigger rate limiting before exhausting the password list
+    First 429 at attempt #6
+----------------------------------------------------------------------
+2/2 attacks blocked
+======================================================================
+
+======================================================================
+COMBINED RESULTS
+======================================================================
+  PASS  attack_replay.py
+  PASS  attack_token_forgery.py
+  PASS  attack_injection.py
+  PASS  attack_mitm_downgrade.py
+  PASS  attack_bruteforce.py
+======================================================================
+ALL ATTACKS BLOCKED
+======================================================================
+   (login rate-limited, waiting 57s before retry 2/3...)
+
+Report uploaded to the Security Dashboard's Attack History panel.
+exit code: 0

@@ -1,0 +1,96 @@
+Run started: 2026-10-28T11:44:22Z
+
+=== F-01 health endpoints over TLS (CA-verified, no -k)
+gateway      -> {"status":"ok","service":"gateway","ts":"2026-10-28T11:44:22.842Z"}
+auth-server  -> {"status":"ok","service":"auth-server","ts":"2026-10-28T11:44:22.863Z"}
+
+=== F-02 plaintext HTTP to the HTTPS port is refused
+http://localhost:3000/health -> HTTP code 000 (000 = no valid HTTP response)
+
+=== F-03 mTLS: Resource Service without a client certificate
+HTTP code 000
+curl exit status: 52 (non-zero = TLS handshake failed before any HTTP)
+
+=== F-03b mTLS: Resource Service WITH the gateway client certificate
+{"status":"ok","service":"resource-service","ts":"2026-10-28T11:44:22.910198+00:00"}
+
+=== F-04 login as three demo users (tokens truncated)
+naytik: scopes=['orders:read', 'orders:write'] expires_in=900 token=eyJhbGciOiJSUzI1Ni...(588 chars)
+rishi : scopes=['orders:read'] token=eyJhbGciOiJSUzI1Ni...(567 chars)
+admin : scopes=['orders:read', 'orders:write', 'admin'] token=eyJhbGciOiJSUzI1Ni...(598 chars)
+
+=== F-05 decoded JWT header and claims for naytik (signature not shown)
+header: {'alg': 'RS256', 'typ': 'JWT'}
+claims: {'sub': 'user-naytik', 'scopes': ['orders:read', 'orders:write'], 'iss': 'secure-api-platform-auth', 'aud': 'secure-api-platform'} ttl_seconds= 900
+
+=== F-06 naytik creates an order (needs orders:write)
+{"id":"f69a7d3d-dd2e-43d1-9b10-a9d803dc2475","item":"Mechanical Keyboard","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:44:23.801290+00:00"}
+
+=== F-07 naytik lists own orders
+[{"id":"f69a7d3d-dd2e-43d1-9b10-a9d803dc2475","item":"Mechanical Keyboard","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:44:23.801290+00:00"}]
+
+=== F-08 rishi (read-only) tries to create an order -> expect 403
+{"error":"insufficient_scope","message":"This action requires the 'orders:write' scope."}
+HTTP 403
+
+=== F-09 BOLA: rishi reads naytik's order by id -> expect 403
+{"detail":"You do not have access to this order."}
+HTTP 403
+
+=== F-10 rishi asks for another user's list via ?owner_id -> expect 403 at the Gateway
+{"error":"insufficient_scope","message":"Requires 'admin' scope to view another user's orders."}
+HTTP 403
+
+=== F-11 admin may read naytik's order -> expect 200
+{"id":"f69a7d3d-dd2e-43d1-9b10-a9d803dc2475","item":"Mechanical Keyboard","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:44:23.801290+00:00"}
+HTTP 200
+
+=== F-12 no token / garbage token / tampered token -> expect 401 each
+no token      -> HTTP 401
+garbage token -> HTTP 401
+tampered token-> HTTP 401
+
+=== F-13 normal user cannot reach admin API -> expect 403; admin can -> 200
+naytik /admin/metrics -> HTTP 403
+admin  /admin/metrics -> HTTP 200
+
+=== F-14 defense in depth: valid client cert but NO HMAC signature, straight to Resource Service -> expect 401
+{"error":"unauthorized","message":"Missing request signature."}
+HTTP 401
+
+=== F-15 stored SQL-injection-looking item is kept as inert data
+{"id":"f43fca6c-b630-4d21-af12-e2191059a75a","item":"'; DROP TABLE orders; --","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:44:24.171395+00:00"}
+orders table still queryable via API -> count: 2
+direct database view (psql as superuser, from inside the postgres container):
+    id    |           item           | quantity |  owner_id   
+----------+--------------------------+----------+-------------
+ f69a7d3d | Mechanical Keyboard      |        1 | user-naytik
+ f43fca6c | '; DROP TABLE orders; -- |        1 | user-naytik
+(2 rows)
+
+
+=== F-16 input validation: oversize quantity, wrong type, missing field -> expect 4xx
+{"item":"x","quantity":99999} -> HTTP 422
+{"item":"x","quantity":"many"} -> HTTP 422
+{"quantity":1} -> HTTP 422
+
+=== F-17 refresh-token rotation: first use ok, reuse rejected
+first use  -> Bearer new access token eyJhbGciOiJSUzI1Ni...(588 chars)
+reuse old  -> HTTP 401
+
+=== F-18 security response headers from the Gateway (helmet)
+Content-Security-Policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Referrer-Policy: no-referrer
+Strict-Transport-Security: max-age=15552000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+
+=== F-19 TLS facts negotiated with the Gateway
+Verification: OK
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Protocol: TLSv1.3
+Verify return code: 0 (ok)
+
+Run finished: 2026-10-28T11:44:24Z

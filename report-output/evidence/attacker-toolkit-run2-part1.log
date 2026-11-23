@@ -1,0 +1,53 @@
+################ attack_replay
+======================================================================
+  attack_replay.py -- Replay a captured, validly-signed request
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:18:52
+======================================================================
+
+1. Sending ORIGINAL request (fresh nonce 1b50b9f2005f...)
+   -> HTTP 200
+
+2. IMMEDIATELY replaying the IDENTICAL request (same signature, same nonce)
+   -> HTTP 401: {"error":"unauthorized","message":"Request already processed (replay detected)."}
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Original request succeeds (sanity check -- proves the signature itself was valid)
+    HTTP 200
+[PASS (attack blocked)] Immediate replay of identical signed request is rejected
+    HTTP 401: {"error":"unauthorized","message":"Request already processed (replay detected)."}
+----------------------------------------------------------------------
+2/2 attacks blocked
+======================================================================
+[exit status: 0]
+################ attack_token_forgery
+======================================================================
+  attack_token_forgery.py -- JWT forgery techniques
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:18:52
+======================================================================
+
+1. Wrong-key forgery: sign a token with an attacker-generated RSA key
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+2. 'alg: none' attack: unsigned token claiming no signature is required
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+3. Algorithm confusion: use the KNOWN PUBLIC key as an HMAC secret (RS256 -> HS256)
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Wrong-key forgery (attacker's own RSA keypair) is rejected
+    HTTP 401 -- token claimed admin scope, signed with a key the server never trusted
+[PASS (attack blocked)] 'alg: none' token is rejected (algorithm is pinned server-side)
+    HTTP 401 -- gateway pins algorithms=['RS256'] in jwt.verify(), so 'none' is never accepted
+[PASS (attack blocked)] Algorithm confusion (public key used as HMAC secret) is rejected
+    HTTP 401 -- gateway pins algorithms=['RS256'], so an HS256-signed token is never even attempted against the public key as an HMAC secret
+----------------------------------------------------------------------
+3/3 attacks blocked
+======================================================================
+[exit status: 0]

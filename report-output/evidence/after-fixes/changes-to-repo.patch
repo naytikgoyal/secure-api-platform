@@ -1,0 +1,807 @@
+--- a/README.md
++++ b/README.md
+@@ -50,6 +50,7 @@
+ - **Dashboard**: `http://localhost:5173` — log in with `admin` / `adminpass456`
+ - **Grafana**: `http://localhost:3001` (`admin`/`admin`) — pre-provisioned "Security Overview" dashboard
+ - **Run the attacker toolkit**: `cd attacker-toolkit && pip install -r requirements.txt && python3 run_all.py`
++  - Replay and algorithm-confusion need keys that `vault-init.sh` moves into Vault. Set `VAULT_TOKEN` (the development token in `infra/docker-compose.yml`) first so the scripts can read them; without it those checks are reported as SKIP (exit code 2), never as a pass. Brute force runs last because it locks out the address it attacks.
+ 
+ Full setup detail, demo user credentials, and troubleshooting: [`docs/build-log.md`](docs/build-log.md).
+ 
+--- a/attacker-toolkit/attack_injection.py
++++ b/attacker-toolkit/attack_injection.py
+@@ -53,7 +53,7 @@
+ from urllib.parse import quote
+ 
+ sys.path.insert(0, str(Path(__file__).parent))
+-from toolkit_common import CA_CERT, GATEWAY_URL, Result, login, print_header, print_summary
++from toolkit_common import CA_CERT, GATEWAY_URL, Result, exit_code_for, login, login_or_skip, print_header, print_summary
+ 
+ import requests
+ 
+@@ -93,10 +93,7 @@
+ def main():
+     print_header("attack_injection.py -- Structural validation + content-pattern handling")
+ 
+-    access_token, _ = login("naytik", "password123")
+-    if not access_token:
+-        print("ERROR: could not log in as naytik -- is the stack running?")
+-        sys.exit(1)
++    access_token = login_or_skip("naytik", "password123", "attack_injection.py")
+ 
+     results = []
+ 
+@@ -214,8 +211,8 @@
+         f"before={before_count}, after={after_count}",
+     ))
+ 
+-    ok = print_summary(results)
+-    sys.exit(0 if ok else 1)
++    print_summary(results)
++    sys.exit(exit_code_for(results))
+ 
+ 
+ if __name__ == "__main__":
+--- a/attacker-toolkit/attack_replay.py
++++ b/attacker-toolkit/attack_replay.py
+@@ -23,7 +23,7 @@
+ sys.path.insert(0, str(Path(__file__).parent))
+ sys.path.insert(0, str(Path(__file__).parent.parent / "resource-service"))
+ 
+-from toolkit_common import CA_CERT, GATEWAY_CLIENT_CERT, GATEWAY_CLIENT_KEY, RESOURCE_URL, Result, login, print_header, print_summary
++from toolkit_common import CA_CERT, GATEWAY_CLIENT_CERT, GATEWAY_CLIENT_KEY, RESOURCE_URL, Result, exit_code_for, load_secret, login_or_skip, print_header, print_summary
+ 
+ try:
+     from signing import build_canonical_string, compute_signature
+@@ -55,30 +55,20 @@
+ def main():
+     print_header("attack_replay.py -- Replay a captured, validly-signed request")
+ 
+-    # We need a real, currently-valid HMAC secret to construct a "captured"
+-    # request that would actually pass signature verification -- this script
+-    # can only run meaningfully with access to it (the "leaked secret" worst
+-    # case described above). Read it the same way the toolkit operator would
+-    # need to have obtained it in a real compromise: from the local certs dir,
+-    # which in THIS demo is populated by infra/scripts/vault-init.sh before it
+-    # shreds the local copy. If it's already been shredded (Week 5+), this
+-    # script documents that it can't run without simulating deeper compromise.
+-    hmac_key_path = Path(__file__).parent.parent / "infra" / "certs" / "hmac-signing.key"
+-    if not hmac_key_path.exists():
+-        print("NOTE: hmac-signing.key is not present locally (expected after Week 5's")
+-        print("vault-init.sh shreds it). This script demonstrates the replay attack")
+-        print("using a copy of the key obtained the same way a real attacker who'd")
+-        print("compromised Vault access would -- for this demo, set HMAC_KEY_OVERRIDE")
+-        print("or re-run vault-init.sh's push step without the shred step to test this.")
+-        sys.exit(1)
++    # A "captured" request that passes signature verification needs the real HMAC
++    # secret -- the "leaked secret" worst case described above. load_secret()
++    # looks in the environment, then the certs folder, then Vault itself when
++    # VAULT_TOKEN is set (an attacker who had obtained Vault access). If none is
++    # available the check is reported as SKIPPED, never as a pass.
++    secret, source = load_secret("HMAC_KEY_OVERRIDE", "hmac-signing.key", "hmac-signing", "key")
++    if not secret:
++        print(f"NOTE: the HMAC key is {source}")
++        print_summary([Result("Replay of a captured signed request is rejected", False, f"could not run: {source}", skipped=True)])
++        sys.exit(2)
++    print(f"(HMAC key obtained from {source})")
+ 
+-    secret = hmac_key_path.read_text().strip()
++    access_token = login_or_skip("naytik", "password123", "attack_replay.py")
+ 
+-    access_token, _ = login("naytik", "password123")
+-    if not access_token:
+-        print("ERROR: could not log in as naytik -- is the stack running?")
+-        sys.exit(1)
+-
+     method, path, body = "GET", "/orders", ""
+     timestamp = str(int(time.time()))
+     nonce = secrets.token_hex(16)
+@@ -107,13 +97,13 @@
+         ),
+         Result(
+             "Immediate replay of identical signed request is rejected",
+-            status2 == 401 and "replay" in body2.lower() or status2 == 401,
++            status2 == 401 and "replay" in body2.lower(),  # a 401 for any OTHER reason (bad token, bad signature) must not count
+             f"HTTP {status2}: {body2[:150]}",
+         ),
+     ]
+ 
+-    ok = print_summary(results)
+-    sys.exit(0 if ok else 1)
++    print_summary(results)
++    sys.exit(exit_code_for(results))
+ 
+ 
+ if __name__ == "__main__":
+--- a/attacker-toolkit/attack_token_forgery.py
++++ b/attacker-toolkit/attack_token_forgery.py
+@@ -24,7 +24,7 @@
+ from pathlib import Path
+ 
+ sys.path.insert(0, str(Path(__file__).parent))
+-from toolkit_common import CA_CERT, GATEWAY_URL, Result, print_header, print_summary
++from toolkit_common import exit_code_for, load_secret, CA_CERT, GATEWAY_URL, Result, print_header, print_summary
+ 
+ import requests
+ from cryptography.hazmat.primitives import hashes, serialization
+@@ -127,23 +127,18 @@
+ def main():
+     print_header("attack_token_forgery.py -- JWT forgery techniques")
+ 
+-    cert_dir = Path(__file__).parent.parent / "infra" / "certs"
+-    pub_key_path = cert_dir / "jwt-signing.pub"
+-    if pub_key_path.exists():
+-        public_key_pem = pub_key_path.read_bytes()
++    pub_pem, source = load_secret("JWT_PUBLIC_KEY_OVERRIDE", "jwt-signing.pub", "jwt-signing", "public_key")
++    results = [attack_wrong_key_forgery(), attack_alg_none()]
++    if pub_pem:
++        print(f"(public key obtained from {source})")
++        results.append(attack_algorithm_confusion(pub_pem.encode()))
+     else:
+-        print("NOTE: jwt-signing.pub not present locally (expected after Week 5 shreds it).")
+-        print("Skipping algorithm-confusion test, which needs the PUBLIC key (not secret,")
+-        print("but needed here to construct the attack payload). Other tests still run.")
+-        public_key_pem = None
++        # The public key is not secret, but the attack needs it to build the payload.
++        results.append(Result("Algorithm confusion (public key used as HMAC secret) is rejected", False, f"could not run: {source}", skipped=True))
+ 
+-    results = [attack_wrong_key_forgery(), attack_alg_none()]
+-    if public_key_pem:
+-        results.append(attack_algorithm_confusion(public_key_pem))
++    print_summary(results)
++    sys.exit(exit_code_for(results))
+ 
+-    ok = print_summary(results)
+-    sys.exit(0 if ok else 1)
+ 
+-
+ if __name__ == "__main__":
+     main()
+--- a/attacker-toolkit/run_all.py
++++ b/attacker-toolkit/run_all.py
+@@ -2,7 +2,7 @@
+ attacker-toolkit/run_all.py
+ 
+ Runs every attack_*.py script in sequence against the live stack, prints a
+-combined pass/fail summary, AND (Sprint 9) posts the full results to the
++combined pass/fail/skip summary, AND (Sprint 9) posts the full results to the
+ Gateway's /admin/attack-report endpoint so they're visible in the Security
+ Dashboard's "Attack History" panel, not just in your terminal scrollback.
+ 
+@@ -18,7 +18,6 @@
+ """
+ import subprocess
+ import sys
+-import time
+ from datetime import datetime, timezone
+ from pathlib import Path
+ 
+@@ -28,9 +27,12 @@
+ SCRIPTS = [
+     "attack_replay.py",
+     "attack_token_forgery.py",
+-    "attack_bruteforce.py",  # deliberately BEFORE injection/mitm -- see note below
+     "attack_injection.py",
+     "attack_mitm_downgrade.py",
++    # LAST on purpose: this script deliberately fails logins until it is rate-limited
++    # and locked out, and the scripts above log in as the same user. Run earlier, it
++    # made the next script's login fail with HTTP 423 (found while testing for the report).
++    "attack_bruteforce.py",
+ ]
+ 
+ # Same demo credentials used throughout this toolkit and documented in
+@@ -56,7 +58,7 @@
+         print(line, end="")  # live streaming -- exactly like before
+         captured_lines.append(line)
+     proc.wait()
+-    return proc.returncode == 0, "".join(captured_lines)
++    return proc.returncode, "".join(captured_lines)
+ 
+ 
+ def post_report_to_dashboard(results):
+@@ -72,13 +74,16 @@
+ 
+         from toolkit_common import CA_CERT
+ 
++        status = lambda rc: "pass" if rc == 0 else ("skip" if rc == 2 else "fail")
+         report = {
+             "ran_at": datetime.now(timezone.utc).isoformat(),
+             "scripts": [
+-                {"name": name, "passed": passed, "output_tail": output[-4000:]}
+-                for name, passed, output in results
++                {"name": name, "passed": rc == 0, "status": status(rc), "output_tail": output[-4000:]}
++                for name, rc, output in results
+             ],
+-            "all_passed": all(passed for _, passed, _ in results),
++            "all_passed": all(rc == 0 for _, rc, _ in results),
++            "any_failed": any(rc not in (0, 2) for _, rc, _ in results),
++            "any_skipped": any(rc == 2 for _, rc, _ in results),
+         }
+ 
+         resp = requests.post(
+@@ -98,43 +103,36 @@
+ 
+ def main():
+     toolkit_dir = Path(__file__).parent
+-    results = []  # list of (script_name, passed, captured_output)
++    results = []  # list of (script_name, exit_code, captured_output); 0 = pass, 2 = skipped, anything else = fail
+ 
+     for script in SCRIPTS:
+         print("\n" + "#" * 70)
+         print(f"# Running {script}")
+         print("#" * 70)
+-        passed, output = run_script(toolkit_dir, script)
+-        results.append((script, passed, output))
++        rc, output = run_script(toolkit_dir, script)
++        results.append((script, rc, output))
+ 
+-        if script == "attack_bruteforce.py":
+-            # attack_bruteforce.py deliberately trips the /auth/login rate
+-            # limiter as its whole point. Any script running immediately
+-            # after it also needs to log in -- without a pause here, that
+-            # next login would ALSO get 429'd, not because it's under attack
+-            # but because of leftover state from the previous script. login()
+-            # in toolkit_common.py now retries with backoff to handle this
+-            # gracefully regardless, but pausing here avoids relying on that
+-            # retry logic every single run. See docs/attack-report.md for
+-            # the real run where this was caught.
+-            print("\n(pausing 15s to let the auth rate limiter window from the")
+-            print(" brute-force test above clear before the next script logs in...)")
+-            time.sleep(15)
+-
++    word = lambda rc: "PASS" if rc == 0 else ("SKIP" if rc == 2 else "FAIL")
+     print("\n" + "=" * 70)
+     print("COMBINED RESULTS")
+     print("=" * 70)
+-    for script, passed, _ in results:
+-        print(f"  {'PASS' if passed else 'FAIL'}  {script}")
++    for script, rc, _ in results:
++        print(f"  {word(rc)}  {script}")
+ 
+-    all_passed = all(passed for _, passed, _ in results)
++    failed = any(rc not in (0, 2) for _, rc, _ in results)
++    skipped = any(rc == 2 for _, rc, _ in results)
+     print("=" * 70)
+-    print("ALL ATTACKS BLOCKED" if all_passed else "SOME ATTACKS SUCCEEDED -- SEE OUTPUT ABOVE")
++    if failed:
++        print("SOME ATTACKS SUCCEEDED OR A SCRIPT FAILED -- SEE OUTPUT ABOVE")
++    elif skipped:
++        print("NO ATTACK SUCCEEDED, BUT SOME CHECKS COULD NOT RUN (SKIP) -- SEE OUTPUT ABOVE")
++    else:
++        print("ALL ATTACKS BLOCKED")
+     print("=" * 70)
+ 
+     post_report_to_dashboard(results)
+ 
+-    sys.exit(0 if all_passed else 1)
++    sys.exit(1 if failed else (2 if skipped else 0))
+ 
+ 
+ if __name__ == "__main__":
+--- a/attacker-toolkit/toolkit_common.py
++++ b/attacker-toolkit/toolkit_common.py
+@@ -13,6 +13,15 @@
+   AUTH_URL             default: https://localhost:4000
+   RESOURCE_URL         default: https://localhost:8000
+   CERT_DIR             default: ../infra/certs (relative to this file)
++  VAULT_ADDR           default: http://localhost:8200 (only used to fetch keys, see load_secret)
++  VAULT_TOKEN          a Vault token allowed to read secret/jwt-signing and secret/hmac-signing
++  HMAC_KEY_OVERRIDE    the HMAC key itself, as an alternative to VAULT_TOKEN
++  JWT_PUBLIC_KEY_OVERRIDE  the JWT public key (PEM), as an alternative to VAULT_TOKEN
++
++Exit codes of every attack_*.py script: 0 = every check passed, 1 = at least one
++attack succeeded or a check failed, 2 = nothing failed but at least one check could
++not run (a SKIP: missing key, or the account is locked). A skipped check is never
++reported as a pass.
+ """
+ import os
+ import sys
+@@ -44,18 +53,31 @@
+     """A single test's outcome. PASS means the ATTACK WAS BLOCKED (defense worked).
+     FAIL means the attack SUCCEEDED (a real vulnerability -- this should never
+     happen on a clean run; if it does, that's exactly what this toolkit exists
+-    to catch, and the corresponding control needs fixing before shipping)."""
++    to catch, and the corresponding control needs fixing before shipping).
++    SKIP means the check could not be run (for example a key it needs is not
++    available). A skip is reported separately and never counts as a pass."""
+ 
+-    def __init__(self, name, passed, detail):
++    def __init__(self, name, passed, detail, skipped=False):
+         self.name = name
+-        self.passed = passed
++        self.passed = passed and not skipped
++        self.skipped = skipped
+         self.detail = detail
+ 
+     def __str__(self):
+-        verdict = "PASS (attack blocked)" if self.passed else "FAIL (attack succeeded -- VULNERABILITY)"
++        if self.skipped:
++            verdict = "SKIPPED (check could not run)"
++        else:
++            verdict = "PASS (attack blocked)" if self.passed else "FAIL (attack succeeded -- VULNERABILITY)"
+         return f"[{verdict}] {self.name}\n    {self.detail}"
+ 
+ 
++def exit_code_for(results):
++    """0 = all passed, 1 = something failed, 2 = nothing failed but something was skipped."""
++    if any(not r.passed and not r.skipped for r in results):
++        return 1
++    return 2 if any(r.skipped for r in results) else 0
++
++
+ def print_header(script_name):
+     _check_certs_exist()
+     print("=" * 70)
+@@ -71,16 +93,46 @@
+     print("-" * 70)
+     for r in results:
+         print(r)
+-    passed = sum(1 for r in results if r.passed)
+-    total = len(results)
++    ran = [r for r in results if not r.skipped]
++    passed = sum(1 for r in ran if r.passed)
++    skipped = len(results) - len(ran)
+     print("-" * 70)
+-    print(f"{passed}/{total} attacks blocked")
+-    if passed < total:
++    print(f"{passed}/{len(ran)} attacks blocked" + (f", {skipped} check(s) skipped" if skipped else ""))
++    if passed < len(ran):
+         print("*** ACTION REQUIRED: one or more attacks succeeded. See detail above. ***")
+     print("=" * 70)
+-    return passed == total
++    return passed == len(ran) and not skipped
+ 
+ 
++def load_secret(env_var, local_name, vault_path, vault_field):
++    """Finds a key the attack scripts need to build a 'captured' request or a forged
++    token. Order: an environment variable, a file in the certs directory (present
++    only if vault-init.sh was run without its shred step), then Vault itself when
++    VAULT_TOKEN is set -- the same position a real attacker who had obtained
++    Vault access would be in. Returns (value, source) or (None, reason)."""
++    import requests
++
++    value = os.environ.get(env_var)
++    if value:
++        return value.strip(), f"environment variable {env_var}"
++    path = CERT_DIR / local_name
++    if path.exists():
++        return path.read_text().strip(), f"file {local_name}"
++    token = os.environ.get("VAULT_TOKEN")
++    if token:
++        addr = os.environ.get("VAULT_ADDR", "http://localhost:8200")
++        try:
++            resp = requests.get(f"{addr}/v1/secret/data/{vault_path}", headers={"X-Vault-Token": token}, timeout=10)
++            resp.raise_for_status()
++            return resp.json()["data"]["data"][vault_field].strip(), f"Vault secret/{vault_path}"
++        except Exception as e:  # network, auth or missing-field problems all mean "cannot run"
++            return None, f"Vault lookup failed ({e})"
++    return None, f"not available: set VAULT_TOKEN, or {env_var}, or keep {local_name} in {CERT_DIR}"
++
++
++LAST_LOGIN_STATUS = None  # HTTP status of the most recent failed login(), so callers can tell a lockout from a wrong password
++
++
+ def login(username, password, max_retries=3):
+     """Returns (access_token, refresh_token) or (None, None) on failure.
+ 
+@@ -108,6 +160,11 @@
+             body = resp.json()
+             return body["access_token"], body["refresh_token"]
+ 
++        global LAST_LOGIN_STATUS
++        LAST_LOGIN_STATUS = resp.status_code
++        if resp.status_code == 423:
++            print(f"   (login refused: account locked, HTTP 423 -- {resp.json().get('message', '')})")
++            return None, None
+         if resp.status_code == 429 and attempt < max_retries - 1:
+             wait = int(resp.headers.get("Retry-After", 5))
+             print(f"   (login rate-limited, waiting {wait}s before retry {attempt + 2}/{max_retries}...)")
+@@ -117,3 +174,17 @@
+         return None, None
+ 
+     return None, None
++
++
++def login_or_skip(username, password, script_name):
++    """Logs in, or ends the script with exit code 2 (SKIP) when the reason is the
++    platform's own protection (lockout or rate limit) rather than a broken stack."""
++    token, refresh = login(username, password)
++    if token:
++        return token
++    if LAST_LOGIN_STATUS in (423, 429):
++        print(f"SKIP: {script_name} could not log in as {username} (HTTP {LAST_LOGIN_STATUS}). The account is locked or rate-limited,")
++        print("      probably by an earlier attack script. Restart the Auth Server or wait, then run this script again.")
++        sys.exit(2)
++    print(f"ERROR: could not log in as {username} -- is the stack running?")
++    sys.exit(1)
+--- a/auth-server/src/accountLockout.js
++++ b/auth-server/src/accountLockout.js
+@@ -1,52 +1,102 @@
+-// Account lockout: locks a SPECIFIC USERNAME after too many failed attempts,
+-// regardless of which IP the attempts came from.
++// Account lockout, keyed by (username, source address).
+ //
+-// This is deliberately a DIFFERENT control from the existing rate limiter
+-// (auth-server/src/middleware/rateLimiter.js), not a replacement for it:
++// This is deliberately a DIFFERENT control from the IP rate limiter in
++// middleware/rateLimiter.js: the rate limiter caps how fast ANY client may call
++// /auth/login; this lock stops ONE SOURCE from going on guessing passwords for
++// ONE ACCOUNT once it has failed too often.
+ //
+-//   - Rate limiting is IP-based: it slows down ANY client hammering
+-//     /auth/login, protecting the SERVER from being overwhelmed and making
+-//     brute-forcing slow regardless of which account is being targeted.
+-//   - Account lockout is USERNAME-based: it protects ONE SPECIFIC ACCOUNT
+-//     even if an attacker spreads their guesses across many IP addresses
+-//     (e.g. a botnet), which the IP-based limiter alone would never catch --
+-//     each individual IP might only make a handful of attempts, staying
+-//     under the per-IP threshold, while the targeted account still gets
+-//     hundreds of guesses in total.
++// WHY THE KEY INCLUDES THE ADDRESS. The first version kept one counter per
++// username, whatever the source. Testing (report finding D-02) showed the
++// price: anyone who knew a username could lock that person out for 15 minutes
++// with five wrong passwords, even though the real owner had done nothing. With
++// the address in the key, an outsider can only lock their OWN address out of
++// the account. The OWASP Authentication Cheat Sheet describes this trade-off.
+ //
+-// Real systems use both together for exactly this reason. This is a
+-// deliberately simple in-memory implementation (see nonce_store.py's
+-// InMemoryNonceStore for the same "good enough for a single-instance demo,
+-// would need Redis to scale horizontally" tradeoff, documented there too).
++// WHAT WE GIVE UP, AND WHAT REPLACES IT. A guesser with many addresses now
++// gets five tries per address, not five in total. Two things make that
++// acceptable: the per-address login rate limit (10 per minute) and bcrypt's
++// cost still make each guess expensive, and every failure is also counted per
++// ACCOUNT across all addresses. When that count passes a threshold we log a
++// warning ("possible distributed guessing") so an operator can react. That is
++// detection, not prevention, and is recorded as a residual risk.
++//
++// Unknown usernames are tracked exactly like real ones, so lockout cannot be
++// used to tell real accounts from invented ones (see docs/threat-model.md 5.1).
++//
++// State is in memory and per instance (see nonce_store.py's InMemoryNonceStore
++// for the same trade-off): a restart clears it and two instances would not
++// share it. Every function takes an optional `now` so the rules can be tested.
+ const FAILED_ATTEMPT_LIMIT = 5;
+ const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
++const FAILURE_WINDOW_MS = 15 * 60 * 1000; // failures older than this are forgotten
++const DISTRIBUTED_GUESS_THRESHOLD = 30; // failures against one account, all sources, inside the window
++const MAX_TRACKED = 5000; // bound on map sizes; expired entries are pruned past this
+ 
+-const failedAttempts = new Map(); // username -> { count, lockedUntil }
++const pairs = new Map(); // `${ip}|${username}` -> { count, lockedUntil, lastFailure }
++const accounts = new Map(); // username -> { count, windowStart, alerted }
+ 
+-export function recordFailedAttempt(username) {
+-  const record = failedAttempts.get(username) || { count: 0, lockedUntil: null };
+-  record.count += 1;
+-  if (record.count >= FAILED_ATTEMPT_LIMIT) {
+-    record.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
++const keyOf = (username, ip) => `${ip}|${username}`;
++
++function prune(now) {
++  if (pairs.size > MAX_TRACKED) {
++    for (const [k, r] of pairs) {
++      const expired = r.lockedUntil ? r.lockedUntil <= now : now - r.lastFailure > FAILURE_WINDOW_MS;
++      if (expired) pairs.delete(k);
++    }
+   }
+-  failedAttempts.set(username, record);
++  if (accounts.size > MAX_TRACKED) {
++    for (const [k, r] of accounts) if (now - r.windowStart > FAILURE_WINDOW_MS) accounts.delete(k);
++  }
+ }
+ 
+-export function clearFailedAttempts(username) {
+-  failedAttempts.delete(username);
++/**
++ * Records one failed login. Returns { accountFailures, distributedGuessingSuspected }.
++ * The second flag is true only once per window, the moment the threshold is passed.
++ */
++export function recordFailedAttempt(username, ip, now = Date.now()) {
++  prune(now);
++
++  const k = keyOf(username, ip);
++  let rec = pairs.get(k);
++  if (!rec || (rec.lockedUntil && rec.lockedUntil <= now) || now - rec.lastFailure > FAILURE_WINDOW_MS) {
++    rec = { count: 0, lockedUntil: null, lastFailure: now };
++  }
++  rec.count += 1;
++  rec.lastFailure = now;
++  if (rec.count >= FAILED_ATTEMPT_LIMIT) rec.lockedUntil = now + LOCKOUT_DURATION_MS;
++  pairs.set(k, rec);
++
++  let acc = accounts.get(username);
++  if (!acc || now - acc.windowStart > FAILURE_WINDOW_MS) acc = { count: 0, windowStart: now, alerted: false };
++  acc.count += 1;
++  const suspected = acc.count >= DISTRIBUTED_GUESS_THRESHOLD && !acc.alerted;
++  if (suspected) acc.alerted = true;
++  accounts.set(username, acc);
++
++  return { accountFailures: acc.count, distributedGuessingSuspected: suspected };
+ }
+ 
+-/** Returns the number of milliseconds remaining if locked, or 0 if not locked. */
+-export function getLockoutRemaining(username) {
+-  const record = failedAttempts.get(username);
+-  if (!record || !record.lockedUntil) return 0;
++/** A successful login clears the failure count for that source only. */
++export function clearFailedAttempts(username, ip) {
++  pairs.delete(keyOf(username, ip));
++}
+ 
+-  const remaining = record.lockedUntil - Date.now();
++/** Returns the number of milliseconds remaining if this source is locked out of this account, or 0. */
++export function getLockoutRemaining(username, ip, now = Date.now()) {
++  const rec = pairs.get(keyOf(username, ip));
++  if (!rec || !rec.lockedUntil) return 0;
++
++  const remaining = rec.lockedUntil - now;
+   if (remaining <= 0) {
+-    // Lockout window has passed -- clear it so the next attempt starts fresh,
+-    // rather than leaving stale state around forever.
+-    failedAttempts.delete(username);
++    // The lock has run out: forget it so the next attempt starts fresh.
++    pairs.delete(keyOf(username, ip));
+     return 0;
+   }
+   return remaining;
+ }
++
++/** Test helper: forget everything. */
++export function _resetForTests() {
++  pairs.clear();
++  accounts.clear();
++}
+--- a/auth-server/src/index.js
++++ b/auth-server/src/index.js
+@@ -7,7 +7,7 @@
+ import express from "express";
+ import pinoHttp from "pino-http";
+ import { randomUUID } from "crypto";
+-import { findUserByUsername, verifyPassword } from "./users.js";
++import { authenticate } from "./users.js";
+ import { issueAccessToken, setPrivateKey, ACCESS_TOKEN_TTL_SECONDS } from "./issueToken.js";
+ import { issueRefreshToken, consumeRefreshToken } from "./refreshTokenStore.js";
+ import { fetchSecrets } from "./vaultClient.js";
+@@ -53,46 +53,40 @@
+   app.post("/auth/login", authLimiter, (req, res) => {
+     const { username, password } = req.body || {};
+ 
+-    if (!username || !password) {
++    if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
+       return res.status(400).json({ error: "invalid_request", message: "username and password are required." });
+     }
+ 
+-    // Account lockout check runs BEFORE we even look at the password --
+-    // if this specific username is locked, we don't want to do a bcrypt
+-    // comparison at all (bcrypt is deliberately slow; skipping it here is a
+-    // minor efficiency win, but more importantly it keeps the "why was this
+-    // rejected" reasoning in one place instead of two).
+-    //
+-    // IMPORTANT: this check runs on the raw submitted username, before we
+-    // know if it corresponds to a real account. That's deliberate: since
+-    // recordFailedAttempt() below is called unconditionally (even for
+-    // nonexistent usernames), a nonexistent username gets "locked" after 5
+-    // attempts in EXACTLY the same way a real one would. If lockout only
+-    // applied to real accounts, an attacker could tell "real username, wrong
+-    // password" apart from "fake username" just by noticing which ones
+-    // eventually return 423 vs. always returning 401 -- reintroducing the
+-    // exact account-enumeration vulnerability this system already defends
+-    // against via the identical 401 message below (docs/threat-model.md 5.1).
+-    const lockoutRemaining = getLockoutRemaining(username);
++    // Lockout is keyed by (username, source address): see accountLockout.js for
++    // why, and for the trade-off. It is checked BEFORE the password comparison so
++    // a locked source costs us no bcrypt work. It applies to unknown usernames
++    // exactly as to real ones, so lockout cannot be used to enumerate accounts
++    // (docs/threat-model.md 5.1).
++    const lockoutRemaining = getLockoutRemaining(username, req.ip);
+     if (lockoutRemaining > 0) {
+-      logger.warn({ reqId: req.id, username, lockoutRemainingMs: lockoutRemaining }, "login denied: account locked");
++      logger.warn({ reqId: req.id, username, lockoutRemainingMs: lockoutRemaining }, "login denied: source locked out of this account");
+       return res.status(423).json({
+         error: "account_locked",
+-        message: `Too many failed attempts for this account. Try again in ${Math.ceil(lockoutRemaining / 60000)} minute(s).`,
++        message: `Too many failed attempts from this address for this account. Try again in ${Math.ceil(lockoutRemaining / 60000)} minute(s).`,
+       });
+     }
+ 
+-    const user = findUserByUsername(username);
++    // authenticate() performs exactly one bcrypt comparison whether or not the
++    // username exists, so response time does not reveal which usernames are
++    // real. The 401 message is also identical (docs/threat-model.md 5.1).
++    const user = authenticate(username, password);
+ 
+-    // Deliberately identical error for "no such user" and "wrong password" --
+-    // see docs/threat-model.md 5.1: distinguishing them enables account enumeration.
+-    if (!user || !verifyPassword(user, password)) {
+-      recordFailedAttempt(username); // tracked even for nonexistent usernames -- see accountLockout.js
++    if (!user) {
++      const result = recordFailedAttempt(username, req.ip);
++      if (result.distributedGuessingSuspected) {
++        // Detection, not prevention: many different sources are failing against one account.
++        logger.warn({ reqId: req.id, username, accountFailures: result.accountFailures }, "possible distributed password guessing against one account");
++      }
+       logger.warn({ reqId: req.id, username }, "login denied: invalid credentials");
+       return res.status(401).json({ error: "invalid_credentials", message: "Incorrect username or password." });
+     }
+ 
+-    clearFailedAttempts(username); // a successful login resets the counter
++    clearFailedAttempts(username, req.ip); // a successful login clears the count for this source
+ 
+     const access_token = issueAccessToken(user.sub, user.scopes);
+     const refresh_token = issueRefreshToken(user.sub, user.scopes);
+--- a/auth-server/src/users.js
++++ b/auth-server/src/users.js
+@@ -5,6 +5,7 @@
+ // Password hashes are bcrypt (cost 10). Plaintext passwords below are for the
+ // README/demo only -- never do this in a real system, obviously.
+ import bcrypt from "bcryptjs";
++import crypto from "crypto";
+ 
+ function hash(pw) {
+   return bcrypt.hashSync(pw, 10);
+@@ -36,6 +37,20 @@
+   return users.find((u) => u.username === username);
+ }
+ 
+-export function verifyPassword(user, password) {
+-  return bcrypt.compareSync(password, user.passwordHash);
++// A real bcrypt hash of a random value nobody knows. When the username does not
++// exist we still compare the submitted password against this, so an unknown user
++// costs the same ~100 ms as a known one. Without it, the slow bcrypt step was
++// skipped for unknown usernames, and the response-time difference (about 12x in
++// testing) let an attacker list valid usernames even though the error messages
++// were identical (OWASP Authentication Cheat Sheet, CWE-208).
++const DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString("hex"), 10);
++
++/**
++ * Returns the user if the credentials are valid, otherwise null. Always performs
++ * exactly one bcrypt comparison, whatever the username.
++ */
++export function authenticate(username, password) {
++  const user = findUserByUsername(username);
++  const matches = bcrypt.compareSync(password, user ? user.passwordHash : DUMMY_HASH);
++  return user && matches ? user : null;
+ }
+--- a/dashboard/src/components/AttackHistory.jsx
++++ b/dashboard/src/components/AttackHistory.jsx
+@@ -44,8 +44,13 @@
+         <div>
+           <p className="hint" style={{ marginTop: 0 }}>
+             Last run: {new Date(report.ran_at).toLocaleString()} &middot;{" "}
+-            <span style={{ color: report.all_passed ? "var(--green)" : "var(--red)" }}>
+-              {report.all_passed ? "ALL ATTACKS BLOCKED" : "SOME ATTACKS SUCCEEDED"}
++            {/* any_failed / any_skipped exist in reports from the current toolkit; older reports only have all_passed */}
++            <span style={{ color: report.all_passed ? "var(--green)" : report.any_failed === false ? "var(--text-dim)" : "var(--red)" }}>
++              {report.all_passed
++                ? "ALL ATTACKS BLOCKED"
++                : report.any_failed === false
++                ? "NO ATTACK SUCCEEDED · SOME CHECKS COULD NOT RUN"
++                : "SOME ATTACKS SUCCEEDED"}
+             </span>
+           </p>
+           {report.scripts.map((s) => (
+@@ -55,7 +60,11 @@
+                 style={{ cursor: "pointer" }}
+                 onClick={() => setExpanded(expanded === s.name ? null : s.name)}
+               >
+-                <span className={`badge ${s.passed ? "allow" : "deny"}`}>{s.passed ? "PASS" : "FAIL"}</span>
++                {s.status === "skip" ? (
++                  <span className="badge" style={{ background: "#2a3340", color: "var(--text-dim)" }}>SKIP</span>
++                ) : (
++                  <span className={`badge ${s.passed ? "allow" : "deny"}`}>{s.passed ? "PASS" : "FAIL"}</span>
++                )}
+                 <span className="msg">{s.name} {expanded === s.name ? "\u25b2" : "\u25bc"}</span>
+               </div>
+               {expanded === s.name && (
+--- a/infra/grafana-dashboard.json
++++ b/infra/grafana-dashboard.json
+@@ -15,7 +15,7 @@
+       "datasource": { "type": "loki", "uid": "Loki" },
+       "targets": [
+         {
+-          "expr": "sum by (level) (count_over_time({service=~\"gateway|resource-service\"} | json [1m]))",
++          "expr": "sum by (level) (count_over_time({service=~\"gateway|resource-service\"} | json | __error__=\"\" [1m]))",
+           "legendFormat": "{{level}}",
+           "refId": "A"
+         }
+@@ -36,7 +36,7 @@
+       "datasource": { "type": "loki", "uid": "Loki" },
+       "targets": [
+         {
+-          "expr": "sum by (msg) (count_over_time({service=\"gateway\", level=\"warn\"} | json [1h]))",
++          "expr": "sum by (msg) (count_over_time({service=\"gateway\"} | json | level=\"warn\" [1h]))",
+           "legendFormat": "{{msg}}",
+           "refId": "A"
+         }
+--- /dev/null
++++ b/auth-server/test/accountLockout.test.js
+@@ -0,0 +1,83 @@
++// Unit tests for the login hardening added after the report's first test campaign
++// (findings D-01 and D-02). Run with: npm test   (uses Node's built-in test runner)
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  recordFailedAttempt, clearFailedAttempts, getLockoutRemaining, _resetForTests,
++} from "../src/accountLockout.js";
++import { authenticate } from "../src/users.js";
++
++const MIN = 60 * 1000;
++const T0 = 1_000_000_000_000;
++
++test("five failures from one address lock that address out of that account", () => {
++  _resetForTests();
++  for (let i = 0; i < 4; i++) recordFailedAttempt("naytik", "10.0.0.5", T0 + i);
++  assert.equal(getLockoutRemaining("naytik", "10.0.0.5", T0 + 10), 0, "four failures must not lock");
++  recordFailedAttempt("naytik", "10.0.0.5", T0 + 5);
++  assert.ok(getLockoutRemaining("naytik", "10.0.0.5", T0 + 10) > 14 * MIN);
++});
++
++test("an outsider cannot lock the real owner out from another address (D-02)", () => {
++  _resetForTests();
++  for (let i = 0; i < 20; i++) recordFailedAttempt("naytik", "203.0.113.9", T0 + i); // attacker's address
++  assert.ok(getLockoutRemaining("naytik", "203.0.113.9", T0 + 100) > 0, "the attacker's own address is locked");
++  assert.equal(getLockoutRemaining("naytik", "198.51.100.7", T0 + 100), 0, "the owner's address is not");
++});
++
++test("a successful login clears the count for that source only", () => {
++  _resetForTests();
++  for (let i = 0; i < 3; i++) recordFailedAttempt("rishi", "10.0.0.5", T0 + i);
++  clearFailedAttempts("rishi", "10.0.0.5");
++  for (let i = 0; i < 4; i++) recordFailedAttempt("rishi", "10.0.0.5", T0 + 10 + i);
++  assert.equal(getLockoutRemaining("rishi", "10.0.0.5", T0 + 20), 0, "count restarted from zero");
++});
++
++test("the lock expires after 15 minutes", () => {
++  _resetForTests();
++  for (let i = 0; i < 5; i++) recordFailedAttempt("admin", "10.0.0.5", T0 + i);
++  assert.ok(getLockoutRemaining("admin", "10.0.0.5", T0 + 14 * MIN) > 0);
++  assert.equal(getLockoutRemaining("admin", "10.0.0.5", T0 + 16 * MIN), 0);
++});
++
++test("old failures are forgotten: four failures a day apart never lock", () => {
++  _resetForTests();
++  for (let i = 0; i < 6; i++) recordFailedAttempt("naytik", "10.0.0.5", T0 + i * 24 * 60 * MIN);
++  assert.equal(getLockoutRemaining("naytik", "10.0.0.5", T0 + 6 * 24 * 60 * MIN), 0);
++});
++
++test("unknown usernames are tracked exactly like real ones", () => {
++  _resetForTests();
++  for (let i = 0; i < 5; i++) recordFailedAttempt("no-such-user", "10.0.0.5", T0 + i);
++  assert.ok(getLockoutRemaining("no-such-user", "10.0.0.5", T0 + 10) > 0);
++});
++
++test("failures from many addresses are counted per account and flagged once", () => {
++  _resetForTests();
++  let flagged = 0, last = 0;
++  for (let i = 0; i < 40; i++) {
++    const r = recordFailedAttempt("naytik", `192.0.2.${i}`, T0 + i);
++    if (r.distributedGuessingSuspected) flagged += 1;
++    last = r.accountFailures;
++  }
++  assert.equal(last, 40);
++  assert.equal(flagged, 1, "the warning fires once, when the threshold of 30 is passed");
++});
++
++test("authenticate returns the user only for the right password", () => {
++  assert.equal(authenticate("naytik", "definitely-wrong"), null);
++  assert.equal(authenticate("no-such-user-xyz", "whatever"), null);
++});
++
++test("an unknown username costs a comparable time to a known one (D-01)", () => {
++  authenticate("naytik", "warm-up"); authenticate("no-such-user", "warm-up"); // warm the JIT
++  const time = (name) => {
++    const t = process.hrtime.bigint();
++    for (let i = 0; i < 3; i++) authenticate(name, "wrong-password");
++    return Number(process.hrtime.bigint() - t) / 3e6; // ms per call
++  };
++  const known = time("naytik");
++  const unknown = time("no-such-user");
++  assert.ok(unknown > known * 0.5, `unknown ${unknown.toFixed(1)} ms vs known ${known.toFixed(1)} ms: the bcrypt step must not be skipped`);
++  assert.ok(unknown < known * 2, "and must not be wildly slower either");
++});
+--- a/auth-server/package.json
++++ b/auth-server/package.json
+@@ "scripts" @@
++    "test": "node --test test/"

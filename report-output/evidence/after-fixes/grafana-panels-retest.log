@@ -1,0 +1,13 @@
+Loki checks on the FIXED dashboard file (queries read from infra/grafana-dashboard.json, not retyped)
+
+Panel: Request Volume (allow vs deny)
+  query: sum by (level) (count_over_time({service=~"gateway|resource-service"} | json | __error__="" [1m]))
+  result: HTTP success, 3 series, total count 595, labels [{'level': 'info'}, {'level': 'warn'}, {'level': 'warning'}]
+
+Panel: Deny Reasons Breakdown
+  query: sum by (msg) (count_over_time({service="gateway"} | json | level="warn" [1h]))
+  result: HTTP success, 5 series, total count 171, labels [{'msg': 'auth denied: invalid/expired token'}, {'msg': 'auth denied: missing/malformed Authorization header'}, {'msg': 'rate limit exceeded'}, {'msg': 'request completed'}]
+
+Panel: Rate Limit Hits Over Time
+  query: sum(count_over_time({service="gateway"} | json | msg="rate limit exceeded" [1m]))
+  result: HTTP success, 1 series, total count 30, labels [{}]

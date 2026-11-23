@@ -1,0 +1,85 @@
+== Host ==
+ProductName:		macOS ProductVersion:		26.5.2 BuildVersion:		25F84 
+arm64
+Docker version 29.5.2, build 79eb04c7d8
+Docker Compose version v5.5.1
+
+== Containers (docker compose ps) ==
+SERVICE            IMAGE                        STATUS
+auth-server        reportrun-auth-server        Up 3 minutes (healthy)
+dashboard          reportrun-dashboard          Up 15 minutes
+gateway            reportrun-gateway            Up 15 minutes (healthy)
+grafana            grafana/grafana:11.1.0       Up 15 minutes
+loki               grafana/loki:3.1.0           Up 15 minutes
+postgres           postgres:16-alpine           Up 15 minutes (healthy)
+promtail           grafana/promtail:3.1.0       Up 15 minutes
+redis              redis:7-alpine               Up 15 minutes (healthy)
+resource-service   reportrun-resource-service   Up 15 minutes (healthy)
+vault              hashicorp/vault:1.17         Up 16 minutes (healthy)
+
+== Runtime versions inside containers ==
+gateway node: v20.20.2
+auth-server node: v20.20.2
+resource-service python: Python 3.12.16
+postgres: postgres (PostgreSQL) 16.15
+redis: Redis server v=7.4.11 sha=00000000:0 malloc=jemalloc-5.3.0 b
+vault: Vault v1.17.6 (69a720d5d940bfcd590d7c24f3c98f178673d796), built 2024-09-24T19:48:40Z
+
+== Installed Node packages (gateway) ==
++-- cors@2.8.6
++-- express-rate-limit@7.5.1
++-- express@4.22.3
++-- helmet@7.2.0
++-- jsonwebtoken@9.0.3
++-- pino-http@10.5.0
++-- pino@9.14.0
++-- rate-limit-redis@4.3.1
++-- redis@4.7.1
+`-- uuid@10.0.0
+
+== Installed Node packages (auth-server) ==
++-- bcryptjs@2.4.3
++-- cors@2.8.6
++-- express-rate-limit@7.5.1
++-- express@4.22.3
++-- helmet@7.2.0
++-- jsonwebtoken@9.0.3
++-- pino-http@10.5.0
++-- pino@9.14.0
++-- rate-limit-redis@4.3.1
+`-- redis@4.7.1
+
+== Installed Python packages (resource-service, selected) ==
+cryptography       50.0.2
+fastapi            0.111.0
+pydantic           2.14.1
+PyJWT              2.8.0
+redis              5.0.4
+requests           2.32.3
+starlette          0.37.2
+structlog          24.1.0
+uvicorn            0.30.1
+== Dashboard container ==
+v20.20.2
+vite processes: 4
++-- @vitejs/plugin-react@4.7.0
++-- react-dom@18.3.1
++-- react@18.3.1
+`-- vite@5.4.21
+
+
+== Containers run as ==
+gateway: root
+auth-server: root
+resource-service: root
+dashboard: root
+
+== Published ports on host ==
+auth-server 0.0.0.0:4000->4000/tcp, [::]:4000->4000/tcp
+dashboard 0.0.0.0:5173->5173/tcp, [::]:5173->5173/tcp
+gateway 0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+grafana 0.0.0.0:3001->3000/tcp, [::]:3001->3000/tcp
+loki 0.0.0.0:3100->3100/tcp, [::]:3100->3100/tcp
+redis 0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+resource-service 0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+vault 0.0.0.0:8200->8200/tcp, [::]:8200->8200/tcp

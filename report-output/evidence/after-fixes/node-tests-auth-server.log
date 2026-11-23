@@ -1,0 +1,29 @@
+$ docker run --rm -v auth-server/test:/app/test:ro <auth-server image> node --test test/
+TAP version 13
+# Subtest: five failures from one address lock that address out of that account
+ok 1 - five failures from one address lock that address out of that account
+# Subtest: an outsider cannot lock the real owner out from another address (D-02)
+ok 2 - an outsider cannot lock the real owner out from another address (D-02)
+# Subtest: a successful login clears the count for that source only
+ok 3 - a successful login clears the count for that source only
+# Subtest: the lock expires after 15 minutes
+ok 4 - the lock expires after 15 minutes
+# Subtest: old failures are forgotten: four failures a day apart never lock
+ok 5 - old failures are forgotten: four failures a day apart never lock
+# Subtest: unknown usernames are tracked exactly like real ones
+ok 6 - unknown usernames are tracked exactly like real ones
+# Subtest: failures from many addresses are counted per account and flagged once
+ok 7 - failures from many addresses are counted per account and flagged once
+# Subtest: authenticate returns the user only for the right password
+ok 8 - authenticate returns the user only for the right password
+# Subtest: an unknown username costs a comparable time to a known one (D-01)
+ok 9 - an unknown username costs a comparable time to a known one (D-01)
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 797.646833

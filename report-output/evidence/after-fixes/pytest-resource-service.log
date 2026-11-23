@@ -1,0 +1,24 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.7, pytest-8.2.2, pluggy-1.7.0 -- /private/tmp/claude-501/-Users-naytikgoyal--claude-spares-spare-nPXQeR/20fbe208-e352-431d-b787-3773582913ae/scratchpad/test-venv/bin/python
+rootdir: /private/tmp/claude-501/-Users-naytikgoyal--claude-spares-spare-nPXQeR/20fbe208-e352-431d-b787-3773582913ae/scratchpad/run-copy/resource-service
+collecting ... collected 17 items
+
+tests/test_nonce_store.py::TestInMemoryNonceStore::test_first_use_of_nonce_succeeds PASSED [  5%]
+tests/test_nonce_store.py::TestInMemoryNonceStore::test_replayed_nonce_is_rejected PASSED [ 11%]
+tests/test_nonce_store.py::TestInMemoryNonceStore::test_replay_rejected_even_immediately PASSED [ 17%]
+tests/test_nonce_store.py::TestInMemoryNonceStore::test_different_nonces_are_independent PASSED [ 23%]
+tests/test_nonce_store.py::TestInMemoryNonceStore::test_expired_nonce_can_be_reused PASSED [ 29%]
+tests/test_signing.py::TestValidSignature::test_valid_signature_passes PASSED [ 35%]
+tests/test_signing.py::TestValidSignature::test_valid_signature_with_body_passes PASSED [ 41%]
+tests/test_signing.py::TestValidSignature::test_valid_signature_with_query_string_passes PASSED [ 47%]
+tests/test_signing.py::TestTamperedBody::test_tampered_body_is_rejected PASSED [ 52%]
+tests/test_signing.py::TestTamperedBody::test_tampered_path_is_rejected PASSED [ 58%]
+tests/test_signing.py::TestTamperedBody::test_tampered_method_is_rejected PASSED [ 64%]
+tests/test_signing.py::TestTamperedBody::test_wrong_secret_is_rejected PASSED [ 70%]
+tests/test_signing.py::TestExpiredTimestamp::test_timestamp_within_window_passes PASSED [ 76%]
+tests/test_signing.py::TestExpiredTimestamp::test_timestamp_outside_window_is_rejected PASSED [ 82%]
+tests/test_signing.py::TestExpiredTimestamp::test_future_timestamp_is_rejected PASSED [ 88%]
+tests/test_signing.py::TestExpiredTimestamp::test_malformed_timestamp_is_rejected PASSED [ 94%]
+tests/test_signing.py::TestNonceReplay::test_same_nonce_reused_still_passes_signature_check PASSED [100%]
+
+============================== 17 passed in 1.12s ==============================

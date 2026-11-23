@@ -1,0 +1,23 @@
+D-02 re-test: lockout is now per (username, source address). Date 2026-10-28T13:44:28Z
+
+1. ATTACKER on a different network address (a second container on the same Docker network) sends 6 wrong passwords for user 'naytik':
+   attacker address: 172.20.0.12
+   attempt 1 -> HTTP 401
+   attempt 2 -> HTTP 401
+   attempt 3 -> HTTP 401
+   attempt 4 -> HTTP 401
+   attempt 5 -> HTTP 401
+   attempt 6 -> HTTP 423
+
+2. THE REAL USER, from this machine (a different address), logs in with the correct password -> expect 200 (before the fix this was HTTP 423):
+   naytik, correct password -> HTTP 200
+
+3. The lock still works against ONE source: from this machine, 5 wrong passwords for 'rishi', then the correct one -> expect 423:
+   rishi wrong 1 -> HTTP 401
+   rishi wrong 2 -> HTTP 401
+   rishi wrong 3 -> HTTP 401
+   rishi wrong 4 -> HTTP 401
+   rishi wrong 5 -> HTTP 401
+   rishi correct password -> HTTP 423   (this source is locked out of this account)
+
+4. Another account is unaffected from the same source: admin correct password -> HTTP 200

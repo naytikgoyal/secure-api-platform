@@ -1,0 +1,17 @@
+Node v20.20.2 | tls.DEFAULT_MIN_VERSION = TLSv1.2 | tls.DEFAULT_MAX_VERSION = TLSv1.3
+CONTROL permissive test server (127.0.0.1:9443)            TLSv1    -> HANDSHAKE OK (TLSv1, ECDHE-RSA-AES256-SHA)
+CONTROL permissive test server (127.0.0.1:9443)            TLSv1.1  -> HANDSHAKE OK (TLSv1.1, ECDHE-RSA-AES256-SHA)
+CONTROL permissive test server (127.0.0.1:9443)            TLSv1.2  -> HANDSHAKE OK (TLSv1.2, ECDHE-RSA-AES256-GCM-SHA384)
+CONTROL permissive test server (127.0.0.1:9443)            TLSv1.3  -> HANDSHAKE OK (TLSv1.3, TLS_AES_256_GCM_SHA384)
+--- real services ---
+Gateway (localhost:3000)                                   TLSv1    -> REFUSED (ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION)
+Gateway (localhost:3000)                                   TLSv1.1  -> REFUSED (ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION)
+Gateway (localhost:3000)                                   TLSv1.2  -> HANDSHAKE OK (TLSv1.2, ECDHE-RSA-AES128-GCM-SHA256)
+Gateway (localhost:3000)                                   TLSv1.3  -> HANDSHAKE OK (TLSv1.3, TLS_AES_256_GCM_SHA384)
+Resource Service (resource-service:8000, mTLS)             TLSv1    -> REFUSED (ECONNRESET)
+Resource Service (resource-service:8000, mTLS)             TLSv1.1  -> REFUSED (ECONNRESET)
+Resource Service (resource-service:8000, mTLS)             TLSv1.2  -> HANDSHAKE OK (TLSv1.2, ECDHE-RSA-AES256-SHA)
+Resource Service (resource-service:8000, mTLS)             TLSv1.3  -> HANDSHAKE OK (TLSv1.3, TLS_AES_256_GCM_SHA384)
+Auth Server (auth-server:4000)                             TLSv1.1  -> REFUSED (ERR_SSL_TLSV1_ALERT_PROTOCOL_VERSION)
+Auth Server (auth-server:4000)                             TLSv1.2  -> HANDSHAKE OK (TLSv1.2, ECDHE-RSA-AES128-GCM-SHA256)
+python OpenSSL 3.5.7 9 Jun 2026 | min = 771

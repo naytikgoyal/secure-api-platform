@@ -1,0 +1,20 @@
+{
+  "dialogs": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "steps": [
+    "S01 login screen",
+    "S02 failed login",
+    "S03 admin dashboard before",
+    "clicked attack button: Forge a JWT",
+    "clicked attack button: Tamper with a valid token",
+    "clicked attack button: Flood with rapid requests",
+    "S04 admin dashboard after attacks (full page)",
+    "S05 read-only view",
+    "S06 read-write view",
+    "S07 hostile strings rendered; JS dialogs fired: 0",
+    "DOM check: script/img elements injected into the orders list = 0",
+    "S08 grafana"
+  ]
+}

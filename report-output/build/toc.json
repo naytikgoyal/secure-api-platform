@@ -1,0 +1,812 @@
+{
+ "headings": [
+  {
+   "id": "H:ACKNOWLEDGEMENT",
+   "kind": "h1",
+   "text": "ACKNOWLEDGEMENT",
+   "match": "ACKNOWLEDGEMENT"
+  },
+  {
+   "id": "H:LIST OF FIGURES",
+   "kind": "h1",
+   "text": "LIST OF FIGURES",
+   "match": "LIST OF FIGURES"
+  },
+  {
+   "id": "H:LIST OF TABLES",
+   "kind": "h1",
+   "text": "LIST OF TABLES",
+   "match": "LIST OF TABLES"
+  },
+  {
+   "id": "H:ABSTRACT",
+   "kind": "h1",
+   "text": "ABSTRACT",
+   "match": "ABSTRACT"
+  },
+  {
+   "id": "H:GRAPHICAL ABSTRACT",
+   "kind": "h1",
+   "text": "GRAPHICAL ABSTRACT",
+   "match": "GRAPHICAL ABSTRACT"
+  },
+  {
+   "id": "H:ABBREVIATIONS AND SYMBOLS",
+   "kind": "h1",
+   "text": "ABBREVIATIONS AND SYMBOLS",
+   "match": "ABBREVIATIONS AND SYMBOLS"
+  },
+  {
+   "id": "H:CHAPTER 1 INTRODUCTION",
+   "kind": "h1",
+   "text": "CHAPTER 1. INTRODUCTION",
+   "match": "CHAPTER 1 INTRODUCTION"
+  },
+  {
+   "id": "H:1.1. Identification of Client and Need",
+   "kind": "h2",
+   "text": "1.1. Identification of Client and Need",
+   "match": "1.1. Identification of Client and Need"
+  },
+  {
+   "id": "H:1.2. Relevant Contemporary Issues",
+   "kind": "h2",
+   "text": "1.2. Relevant Contemporary Issues",
+   "match": "1.2. Relevant Contemporary Issues"
+  },
+  {
+   "id": "H:1.3. Problem Identification",
+   "kind": "h2",
+   "text": "1.3. Problem Identification",
+   "match": "1.3. Problem Identification"
+  },
+  {
+   "id": "H:1.4. Identification of Tasks",
+   "kind": "h2",
+   "text": "1.4. Identification of Tasks",
+   "match": "1.4. Identification of Tasks"
+  },
+  {
+   "id": "H:1.5. Timeline",
+   "kind": "h2",
+   "text": "1.5. Timeline",
+   "match": "1.5. Timeline"
+  },
+  {
+   "id": "H:1.6. Organization of the Report",
+   "kind": "h2",
+   "text": "1.6. Organization of the Report",
+   "match": "1.6. Organization of the Report"
+  },
+  {
+   "id": "H:CHAPTER 2 LITERATURE SURVEY",
+   "kind": "h1",
+   "text": "CHAPTER 2. LITERATURE SURVEY",
+   "match": "CHAPTER 2 LITERATURE SURVEY"
+  },
+  {
+   "id": "H:2.1. Timeline of the Reported Problem",
+   "kind": "h2",
+   "text": "2.1. Timeline of the Reported Problem",
+   "match": "2.1. Timeline of the Reported Problem"
+  },
+  {
+   "id": "H:2.2. Proposed Solutions in the Literature",
+   "kind": "h2",
+   "text": "2.2. Proposed Solutions in the Literature",
+   "match": "2.2. Proposed Solutions in the Literature"
+  },
+  {
+   "id": "H:2.3. Bibliometric Analysis",
+   "kind": "h2",
+   "text": "2.3. Bibliometric Analysis",
+   "match": "2.3. Bibliometric Analysis"
+  },
+  {
+   "id": "H:2.4. Review Summary",
+   "kind": "h2",
+   "text": "2.4. Review Summary",
+   "match": "2.4. Review Summary"
+  },
+  {
+   "id": "H:2.5. Problem Definition",
+   "kind": "h2",
+   "text": "2.5. Problem Definition",
+   "match": "2.5. Problem Definition"
+  },
+  {
+   "id": "H:2.6. Goals and Objectives",
+   "kind": "h2",
+   "text": "2.6. Goals and Objectives",
+   "match": "2.6. Goals and Objectives"
+  },
+  {
+   "id": "H:CHAPTER 3 DESIGN FLOW AND PROCESS",
+   "kind": "h1",
+   "text": "CHAPTER 3. DESIGN FLOW AND PROCESS",
+   "match": "CHAPTER 3 DESIGN FLOW AND PROCESS"
+  },
+  {
+   "id": "H:3.1. Concept Generation and Requirement Analysis",
+   "kind": "h2",
+   "text": "3.1. Concept Generation and Requirement Analysis",
+   "match": "3.1. Concept Generation and Requirement Analysis"
+  },
+  {
+   "id": "H:3.2. Evaluation and Selection of Specifications and Features",
+   "kind": "h2",
+   "text": "3.2. Evaluation and Selection of Specifications and Features",
+   "match": "3.2. Evaluation and Selection of Specifications and Features"
+  },
+  {
+   "id": "H:3.3. Design Constraints",
+   "kind": "h2",
+   "text": "3.3. Design Constraints",
+   "match": "3.3. Design Constraints"
+  },
+  {
+   "id": "H:3.4. Analysis and Feature Finalisation Subject to Constraints",
+   "kind": "h2",
+   "text": "3.4. Analysis and Feature Finalisation Subject to Constraints",
+   "match": "3.4. Analysis and Feature Finalisation Subject to Constraints"
+  },
+  {
+   "id": "H:3.5. Alternative Designs",
+   "kind": "h2",
+   "text": "3.5. Alternative Designs",
+   "match": "3.5. Alternative Designs"
+  },
+  {
+   "id": "H:3.6. Best Design Selection",
+   "kind": "h2",
+   "text": "3.6. Best Design Selection",
+   "match": "3.6. Best Design Selection"
+  },
+  {
+   "id": "H:3.7. Implementation Plan",
+   "kind": "h2",
+   "text": "3.7. Implementation Plan",
+   "match": "3.7. Implementation Plan"
+  },
+  {
+   "id": "H:CHAPTER 4 RESULTS ANALYSIS AND VALIDATION",
+   "kind": "h1",
+   "text": "CHAPTER 4. RESULTS ANALYSIS AND VALIDATION",
+   "match": "CHAPTER 4 RESULTS ANALYSIS AND VALIDATION"
+  },
+  {
+   "id": "H:4.1. Implementation Environment and Tools",
+   "kind": "h2",
+   "text": "4.1. Implementation Environment and Tools",
+   "match": "4.1. Implementation Environment and Tools"
+  },
+  {
+   "id": "H:4.2. Implementation of the Solution",
+   "kind": "h2",
+   "text": "4.2. Implementation of the Solution",
+   "match": "4.2. Implementation of the Solution"
+  },
+  {
+   "id": "H:4.3. Threat Register and Security Analysis",
+   "kind": "h2",
+   "text": "4.3. Threat Register and Security Analysis",
+   "match": "4.3. Threat Register and Security Analysis"
+  },
+  {
+   "id": "H:4.4. Test Methodology and Environment",
+   "kind": "h2",
+   "text": "4.4. Test Methodology and Environment",
+   "match": "4.4. Test Methodology and Environment"
+  },
+  {
+   "id": "H:4.5. Results",
+   "kind": "h2",
+   "text": "4.5. Results",
+   "match": "4.5. Results"
+  },
+  {
+   "id": "H:4.6. Objectives Against Results",
+   "kind": "h2",
+   "text": "4.6. Objectives Against Results",
+   "match": "4.6. Objectives Against Results"
+  },
+  {
+   "id": "H:4.7. Defects, Weaknesses and Overstated Claims",
+   "kind": "h2",
+   "text": "4.7. Defects, Weaknesses and Overstated Claims",
+   "match": "4.7. Defects, Weaknesses and Overstated Claims"
+  },
+  {
+   "id": "H:4.8. Discussion",
+   "kind": "h2",
+   "text": "4.8. Discussion",
+   "match": "4.8. Discussion"
+  },
+  {
+   "id": "H:4.9. Project Management and Communication",
+   "kind": "h2",
+   "text": "4.9. Project Management and Communication",
+   "match": "4.9. Project Management and Communication"
+  },
+  {
+   "id": "H:CHAPTER 5 CONCLUSION AND FUTURE WORK",
+   "kind": "h1",
+   "text": "CHAPTER 5. CONCLUSION AND FUTURE WORK",
+   "match": "CHAPTER 5 CONCLUSION AND FUTURE WORK"
+  },
+  {
+   "id": "H:5.1. Conclusion",
+   "kind": "h2",
+   "text": "5.1. Conclusion",
+   "match": "5.1. Conclusion"
+  },
+  {
+   "id": "H:5.2. Deviation from Expected Results",
+   "kind": "h2",
+   "text": "5.2. Deviation from Expected Results",
+   "match": "5.2. Deviation from Expected Results"
+  },
+  {
+   "id": "H:5.3. Limitations",
+   "kind": "h2",
+   "text": "5.3. Limitations",
+   "match": "5.3. Limitations"
+  },
+  {
+   "id": "H:5.4. Future Work",
+   "kind": "h2",
+   "text": "5.4. Future Work",
+   "match": "5.4. Future Work"
+  },
+  {
+   "id": "H:5.5. Closing Remarks",
+   "kind": "h2",
+   "text": "5.5. Closing Remarks",
+   "match": "5.5. Closing Remarks"
+  },
+  {
+   "id": "H:REFERENCES",
+   "kind": "h1",
+   "text": "REFERENCES",
+   "match": "REFERENCES"
+  },
+  {
+   "id": "H:APPENDIX-1 USER MANUAL: SECURE API WEB APPLICATION",
+   "kind": "h1",
+   "text": "APPENDIX-1: USER MANUAL: SECURE API WEB APPLICATION",
+   "match": "APPENDIX-1 USER MANUAL: SECURE API WEB APPLICATION"
+  },
+  {
+   "id": "H:APPENDIX-2 API AND TEST REFERENCE: SECURE API WEB APPLICATION",
+   "kind": "h1",
+   "text": "APPENDIX-2: API AND TEST REFERENCE: SECURE API WEB APPLICATION",
+   "match": "APPENDIX-2 API AND TEST REFERENCE: SECURE API WEB APPLICATION"
+  },
+  {
+   "id": "H:APPENDIX-3 KEY CODE EXCERPTS: SECURE API WEB APPLICATION",
+   "kind": "h1",
+   "text": "APPENDIX-3: KEY CODE EXCERPTS: SECURE API WEB APPLICATION",
+   "match": "APPENDIX-3 KEY CODE EXCERPTS: SECURE API WEB APPLICATION"
+  },
+  {
+   "id": "H:ACHIEVEMENTS",
+   "kind": "h1",
+   "text": "ACHIEVEMENTS",
+   "match": "ACHIEVEMENTS"
+  }
+ ],
+ "figures": [
+  {
+   "id": "F:1",
+   "kind": "fig",
+   "text": "Figure 1: Graphical abstract: four independent layers protect every request, supported by Vault, Redis and Grafana",
+   "match": "Figure 1: Graphical abstract: four independent layers protect every request, supported by Vault, Redis and Grafana"
+  },
+  {
+   "id": "F:2",
+   "kind": "fig",
+   "text": "Figure 2: Project phases between September and November 2026 (approximate boundaries)",
+   "match": "Figure 2: Project phases between September and November 2026 (approximate boundaries)"
+  },
+  {
+   "id": "F:3",
+   "kind": "fig",
+   "text": "Figure 3: Timeline of the sources that shaped the controls used in this project",
+   "match": "Figure 3: Timeline of the sources that shaped the controls used in this project"
+  },
+  {
+   "id": "F:4",
+   "kind": "fig",
+   "text": "Figure 4: Surveyed sources by type (37 sources)",
+   "match": "Figure 4: Surveyed sources by type (37 sources)"
+  },
+  {
+   "id": "F:5",
+   "kind": "fig",
+   "text": "Figure 5: Surveyed sources by publication period (37 sources)",
+   "match": "Figure 5: Surveyed sources by publication period (37 sources)"
+  },
+  {
+   "id": "F:6",
+   "kind": "fig",
+   "text": "Figure 6: Three alternative designs compared: perimeter trust, session-based monolith and layered zero trust",
+   "match": "Figure 6: Three alternative designs compared: perimeter trust, session-based monolith and layered zero trust"
+  },
+  {
+   "id": "F:7",
+   "kind": "fig",
+   "text": "Figure 7: System architecture with zones and numbered flows",
+   "match": "Figure 7: System architecture with zones and numbered flows"
+  },
+  {
+   "id": "F:8",
+   "kind": "fig",
+   "text": "Figure 8: Trust zones and the three boundary crossings",
+   "match": "Figure 8: Trust zones and the three boundary crossings"
+  },
+  {
+   "id": "F:9",
+   "kind": "fig",
+   "text": "Figure 9: Login and refresh-token rotation",
+   "match": "Figure 9: Login and refresh-token rotation"
+  },
+  {
+   "id": "F:10",
+   "kind": "fig",
+   "text": "Figure 10: Path of an authenticated read request through all layers",
+   "match": "Figure 10: Path of an authenticated read request through all layers"
+  },
+  {
+   "id": "F:11",
+   "kind": "fig",
+   "text": "Figure 11: Signing at the Gateway and verification at the Resource Service",
+   "match": "Figure 11: Signing at the Gateway and verification at the Resource Service"
+  },
+  {
+   "id": "F:12",
+   "kind": "fig",
+   "text": "Figure 12: Data held by the system and where it lives",
+   "match": "Figure 12: Data held by the system and where it lives"
+  },
+  {
+   "id": "F:13",
+   "kind": "fig",
+   "text": "Figure 13: Order of checks across the Gateway and Resource Service, with the response for each failure",
+   "match": "Figure 13: Order of checks across the Gateway and Resource Service, with the response for each failure"
+  },
+  {
+   "id": "F:14",
+   "kind": "fig",
+   "text": "Figure 14: Containers, images, ports, volumes and mounts of the test deployment",
+   "match": "Figure 14: Containers, images, ports, volumes and mounts of the test deployment"
+  },
+  {
+   "id": "F:15",
+   "kind": "fig",
+   "text": "Figure 15: JWT verification in the Gateway with a pinned algorithm (gateway/src/middleware/auth.js, lines 41-63)",
+   "match": "Figure 15: JWT verification in the Gateway with a pinned algorithm (gateway/src/middleware/auth.js, lines 41-63)"
+  },
+  {
+   "id": "F:16",
+   "kind": "fig",
+   "text": "Figure 16: Parameterised queries for listing and reading orders (resource-service/db.py, lines 128-160)",
+   "match": "Figure 16: Parameterised queries for listing and reading orders (resource-service/db.py, lines 128-160)"
+  },
+  {
+   "id": "F:17",
+   "kind": "fig",
+   "text": "Figure 17: Two event paths: Loki and Grafana for history, a live buffer for the dashboard",
+   "match": "Figure 17: Two event paths: Loki and Grafana for history, a live buffer for the dashboard"
+  },
+  {
+   "id": "F:18",
+   "kind": "fig",
+   "text": "Figure 18: Checks performed at each of the four layers",
+   "match": "Figure 18: Checks performed at each of the four layers"
+  },
+  {
+   "id": "F:19",
+   "kind": "fig",
+   "text": "Figure 19: The five test stages used to validate the platform",
+   "match": "Figure 19: The five test stages used to validate the platform"
+  },
+  {
+   "id": "F:20",
+   "kind": "fig",
+   "text": "Figure 20: Captured output of the unit-test run: 17 passed",
+   "match": "Figure 20: Captured output of the unit-test run: 17 passed"
+  },
+  {
+   "id": "F:21",
+   "kind": "fig",
+   "text": "Figure 21: Captured output, flows F-01 to F-05: health, plaintext, mTLS and login",
+   "match": "Figure 21: Captured output, flows F-01 to F-05: health, plaintext, mTLS and login"
+  },
+  {
+   "id": "F:22",
+   "kind": "fig",
+   "text": "Figure 22: Captured output, flows F-06 to F-13: orders, scope and ownership checks, admin API",
+   "match": "Figure 22: Captured output, flows F-06 to F-13: orders, scope and ownership checks, admin API"
+  },
+  {
+   "id": "F:23",
+   "kind": "fig",
+   "text": "Figure 23: Captured output, flows F-14 to F-16: signature check, injection data and validation",
+   "match": "Figure 23: Captured output, flows F-14 to F-16: signature check, injection data and validation"
+  },
+  {
+   "id": "F:24",
+   "kind": "fig",
+   "text": "Figure 24: Captured output, flows F-17 to F-19: refresh rotation, response headers and TLS",
+   "match": "Figure 24: Captured output, flows F-17 to F-19: refresh rotation, response headers and TLS"
+  },
+  {
+   "id": "F:25",
+   "kind": "fig",
+   "text": "Figure 25: Captured output of the stock runner showing two scripts that could not complete",
+   "match": "Figure 25: Captured output of the stock runner showing two scripts that could not complete"
+  },
+  {
+   "id": "F:26",
+   "kind": "fig",
+   "text": "Figure 26: Checks executed against the running system, by stage",
+   "match": "Figure 26: Checks executed against the running system, by stage"
+  },
+  {
+   "id": "F:27",
+   "kind": "fig",
+   "text": "Figure 27: Captured output of the TLS version probe, including the control server",
+   "match": "Figure 27: Captured output of the TLS version probe, including the control server"
+  },
+  {
+   "id": "F:28",
+   "kind": "fig",
+   "text": "Figure 28: Login latency for existing and unknown usernames",
+   "match": "Figure 28: Login latency for existing and unknown usernames"
+  },
+  {
+   "id": "F:29",
+   "kind": "fig",
+   "text": "Figure 29: Outcome of a 130-request burst against a limit of 100 per minute",
+   "match": "Figure 29: Outcome of a 130-request burst against a limit of 100 per minute"
+  },
+  {
+   "id": "F:30",
+   "kind": "fig",
+   "text": "Figure 30: Captured output of the timing measurement and of the lockout check",
+   "match": "Figure 30: Captured output of the timing measurement and of the lockout check"
+  },
+  {
+   "id": "F:31",
+   "kind": "fig",
+   "text": "Figure 31: S-02: sign-in page after a failed login, with the credential note cropped out",
+   "match": "Figure 31: S-02: sign-in page after a failed login, with the credential note cropped out"
+  },
+  {
+   "id": "F:32",
+   "kind": "fig",
+   "text": "Figure 32: S-04: administrator view after three real attack simulations",
+   "match": "Figure 32: S-04: administrator view after three real attack simulations"
+  },
+  {
+   "id": "F:33",
+   "kind": "fig",
+   "text": "Figure 33: S-05: orders view for the read-only user",
+   "match": "Figure 33: S-05: orders view for the read-only user"
+  },
+  {
+   "id": "F:34",
+   "kind": "fig",
+   "text": "Figure 34: S-07: hostile strings shown as plain text in the orders list",
+   "match": "Figure 34: S-07: hostile strings shown as plain text in the orders list"
+  },
+  {
+   "id": "F:35",
+   "kind": "fig",
+   "text": "Figure 35: S-08: Grafana Security Overview after the rate-limit burst; one panel works, one errors, one is empty",
+   "match": "Figure 35: S-08: Grafana Security Overview after the rate-limit burst; one panel works, one errors, one is empty"
+  },
+  {
+   "id": "F:36",
+   "kind": "fig",
+   "text": "Figure 36: Captured output of the Loki queries behind the three panels",
+   "match": "Figure 36: Captured output of the Loki queries behind the three panels"
+  },
+  {
+   "id": "F:37",
+   "kind": "fig",
+   "text": "Figure 37: Captured output of the new Auth Server tests: 9 passed",
+   "match": "Figure 37: Captured output of the new Auth Server tests: 9 passed"
+  },
+  {
+   "id": "F:38",
+   "kind": "fig",
+   "text": "Figure 38: Login time for existing and unknown usernames, before and after the fix",
+   "match": "Figure 38: Login time for existing and unknown usernames, before and after the fix"
+  },
+  {
+   "id": "F:39",
+   "kind": "fig",
+   "text": "Figure 39: Captured output of the timing re-test, including the control round",
+   "match": "Figure 39: Captured output of the timing re-test, including the control round"
+  },
+  {
+   "id": "F:40",
+   "kind": "fig",
+   "text": "Figure 40: Captured output of the lockout re-test with an attacker on a different address",
+   "match": "Figure 40: Captured output of the lockout re-test with an attacker on a different address"
+  },
+  {
+   "id": "F:41",
+   "kind": "fig",
+   "text": "Figure 41: Grafana Security Overview after the fix: all three panels show data",
+   "match": "Figure 41: Grafana Security Overview after the fix: all three panels show data"
+  },
+  {
+   "id": "F:42",
+   "kind": "fig",
+   "text": "Figure 42: Excerpts of the two re-run toolkit logs: without keys (run A) and with a Vault token (run B)",
+   "match": "Figure 42: Excerpts of the two re-run toolkit logs: without keys (run A) and with a Vault token (run B)"
+  },
+  {
+   "id": "F:43",
+   "kind": "fig",
+   "text": "Figure 43: Attack History panel after run A (above, with SKIP) and run B (below, all pass)",
+   "match": "Figure 43: Attack History panel after run A (above, with SKIP) and run B (below, all pass)"
+  },
+  {
+   "id": "F:44",
+   "kind": "fig",
+   "text": "Figure 44: Sign-in page of the dashboard (credential note cropped out)",
+   "match": "Figure 44: Sign-in page of the dashboard (credential note cropped out)"
+  },
+  {
+   "id": "F:45",
+   "kind": "fig",
+   "text": "Figure 45: Administrator's Security Operations Dashboard",
+   "match": "Figure 45: Administrator's Security Operations Dashboard"
+  },
+  {
+   "id": "F:46",
+   "kind": "fig",
+   "text": "Figure 46: Customer view for a user with read and write permission",
+   "match": "Figure 46: Customer view for a user with read and write permission"
+  },
+  {
+   "id": "F:47",
+   "kind": "fig",
+   "text": "Figure 47: Request signing in the Gateway (gateway/src/sign.js, lines 10-18)",
+   "match": "Figure 47: Request signing in the Gateway (gateway/src/sign.js, lines 10-18)"
+  },
+  {
+   "id": "F:48",
+   "kind": "fig",
+   "text": "Figure 48: Signature verification in the Resource Service (resource-service/signing.py, lines 31-66)",
+   "match": "Figure 48: Signature verification in the Resource Service (resource-service/signing.py, lines 31-66)"
+  },
+  {
+   "id": "F:49",
+   "kind": "fig",
+   "text": "Figure 49: Atomic nonce reservation (resource-service/nonce_store.py, lines 28-33)",
+   "match": "Figure 49: Atomic nonce reservation (resource-service/nonce_store.py, lines 28-33)"
+  },
+  {
+   "id": "F:50",
+   "kind": "fig",
+   "text": "Figure 50: Recording a failed login: per-source lock and account-wide count (auth-server/src/accountLockout.js, lines 56-77)",
+   "match": "Figure 50: Recording a failed login: per-source lock and account-wide count (auth-server/src/accountLockout.js, lines 56-77)"
+  },
+  {
+   "id": "F:51",
+   "kind": "fig",
+   "text": "Figure 51: Checking whether a source is locked out of an account (auth-server/src/accountLockout.js, lines 85-96)",
+   "match": "Figure 51: Checking whether a source is locked out of an account (auth-server/src/accountLockout.js, lines 85-96)"
+  },
+  {
+   "id": "F:52",
+   "kind": "fig",
+   "text": "Figure 52: Creation of the application database role (infra/postgres-init/01-create-app-role.sh, lines 36-42)",
+   "match": "Figure 52: Creation of the application database role (infra/postgres-init/01-create-app-role.sh, lines 36-42)"
+  },
+  {
+   "id": "F:53",
+   "kind": "fig",
+   "text": "Figure 53: Authentication with one bcrypt comparison whatever the username (auth-server/src/users.js, lines 40-56)",
+   "match": "Figure 53: Authentication with one bcrypt comparison whatever the username (auth-server/src/users.js, lines 40-56)"
+  }
+ ],
+ "tables": [
+  {
+   "id": "T:1",
+   "kind": "tab",
+   "text": "Table 1: Problems the project set out to solve",
+   "match": "Table 1: Problems the project set out to solve"
+  },
+  {
+   "id": "T:2",
+   "kind": "tab",
+   "text": "Table 2: Project phases and main outputs",
+   "match": "Table 2: Project phases and main outputs"
+  },
+  {
+   "id": "T:3",
+   "kind": "tab",
+   "text": "Table 3: Coverage of the seven problems by the surveyed sources",
+   "match": "Table 3: Coverage of the seven problems by the surveyed sources"
+  },
+  {
+   "id": "T:4",
+   "kind": "tab",
+   "text": "Table 4: Objectives and acceptance criteria",
+   "match": "Table 4: Objectives and acceptance criteria"
+  },
+  {
+   "id": "T:5",
+   "kind": "tab",
+   "text": "Table 5: Functional and security requirements",
+   "match": "Table 5: Functional and security requirements"
+  },
+  {
+   "id": "T:6",
+   "kind": "tab",
+   "text": "Table 6: Feature selection",
+   "match": "Table 6: Feature selection"
+  },
+  {
+   "id": "T:7",
+   "kind": "tab",
+   "text": "Table 7: Effect of the constraints on the final design",
+   "match": "Table 7: Effect of the constraints on the final design"
+  },
+  {
+   "id": "T:8",
+   "kind": "tab",
+   "text": "Table 8: Weighted comparison of the three alternatives",
+   "match": "Table 8: Weighted comparison of the three alternatives"
+  },
+  {
+   "id": "T:9",
+   "kind": "tab",
+   "text": "Table 9: Comparison under three weightings",
+   "match": "Table 9: Comparison under three weightings"
+  },
+  {
+   "id": "T:10",
+   "kind": "tab",
+   "text": "Table 10: Components and responsibilities",
+   "match": "Table 10: Components and responsibilities"
+  },
+  {
+   "id": "T:11",
+   "kind": "tab",
+   "text": "Table 11: Tools and versions observed in testing",
+   "match": "Table 11: Tools and versions observed in testing"
+  },
+  {
+   "id": "T:12",
+   "kind": "tab",
+   "text": "Table 12: Lines of code and configuration by component",
+   "match": "Table 12: Lines of code and configuration by component"
+  },
+  {
+   "id": "T:13",
+   "kind": "tab",
+   "text": "Table 13: Threat register for the implemented system",
+   "match": "Table 13: Threat register for the implemented system"
+  },
+  {
+   "id": "T:14",
+   "kind": "tab",
+   "text": "Table 14: Per-endpoint threats and implementation",
+   "match": "Table 14: Per-endpoint threats and implementation"
+  },
+  {
+   "id": "T:15",
+   "kind": "tab",
+   "text": "Table 15: Unit tests by group",
+   "match": "Table 15: Unit tests by group"
+  },
+  {
+   "id": "T:16",
+   "kind": "tab",
+   "text": "Table 16: Live functional flows and results",
+   "match": "Table 16: Live functional flows and results"
+  },
+  {
+   "id": "T:17",
+   "kind": "tab",
+   "text": "Table 17: Attacker-toolkit checks and outcomes (corrected run)",
+   "match": "Table 17: Attacker-toolkit checks and outcomes (corrected run)"
+  },
+  {
+   "id": "T:18",
+   "kind": "tab",
+   "text": "Table 18: The 18 injection and malformed-input checks",
+   "match": "Table 18: The 18 injection and malformed-input checks"
+  },
+  {
+   "id": "T:19",
+   "kind": "tab",
+   "text": "Table 19: TLS versions accepted by each service",
+   "match": "Table 19: TLS versions accepted by each service"
+  },
+  {
+   "id": "T:20",
+   "kind": "tab",
+   "text": "Table 20: Objectives and outcomes",
+   "match": "Table 20: Objectives and outcomes"
+  },
+  {
+   "id": "T:21",
+   "kind": "tab",
+   "text": "Table 21: Findings and recommendations",
+   "match": "Table 21: Findings and recommendations"
+  },
+  {
+   "id": "T:22",
+   "kind": "tab",
+   "text": "Table 22: Changes made to fix the five findings",
+   "match": "Table 22: Changes made to fix the five findings"
+  },
+  {
+   "id": "T:23",
+   "kind": "tab",
+   "text": "Table 23: Before and after for each fixed finding",
+   "match": "Table 23: Before and after for each fixed finding"
+  },
+  {
+   "id": "T:24",
+   "kind": "tab",
+   "text": "Table 24: Recommended future work",
+   "match": "Table 24: Recommended future work"
+  },
+  {
+   "id": "T:25",
+   "kind": "tab",
+   "text": "Table 25: Common problems and remedies",
+   "match": "Table 25: Common problems and remedies"
+  },
+  {
+   "id": "T:26",
+   "kind": "tab",
+   "text": "Table 26: HTTP endpoints of the platform",
+   "match": "Table 26: HTTP endpoints of the platform"
+  },
+  {
+   "id": "T:27",
+   "kind": "tab",
+   "text": "Table 27: HTTP status codes used by the platform",
+   "match": "Table 27: HTTP status codes used by the platform"
+  },
+  {
+   "id": "T:28",
+   "kind": "tab",
+   "text": "Table 28: Security parameters and where they are set",
+   "match": "Table 28: Security parameters and where they are set"
+  },
+  {
+   "id": "T:29",
+   "kind": "tab",
+   "text": "Table 29: Evidence files and what they show",
+   "match": "Table 29: Evidence files and what they show"
+  },
+  {
+   "id": "T:30",
+   "kind": "tab",
+   "text": "Table 30: Requirements traceability matrix",
+   "match": "Table 30: Requirements traceability matrix"
+  },
+  {
+   "id": "T:31",
+   "kind": "tab",
+   "text": "Table 31: What each attack script does",
+   "match": "Table 31: What each attack script does"
+  },
+  {
+   "id": "T:32",
+   "kind": "tab",
+   "text": "Table 32: Development-time defects from the build log",
+   "match": "Table 32: Development-time defects from the build log"
+  }
+ ]
+}

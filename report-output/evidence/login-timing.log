@@ -1,0 +1,21 @@
+Login latency, wrong password. 4 attempts per username (below the 5-failure lockout), alternating. curl time_total, TLS handshake included for both.
+rishi 0.132906 401
+no-such-user-1 0.007383 401
+rishi 0.121781 401
+no-such-user-2 0.008327 401
+rishi 0.128935 401
+no-such-user-3 0.010788 401
+rishi 0.142297 401
+no-such-user-4 0.016310 401
+Login latency, wrong password. 4 attempts per username (below the 5-failure lockout), alternating. curl time_total, TLS handshake included for both.
+  rishi          0.132906s  HTTP 401
+  no-such-user-1 0.007383s  HTTP 401
+  rishi          0.121781s  HTTP 401
+  no-such-user-2 0.008327s  HTTP 401
+  rishi          0.128935s  HTTP 401
+  no-such-user-3 0.010788s  HTTP 401
+  rishi          0.142297s  HTTP 401
+  no-such-user-4 0.016310s  HTTP 401
+existing user : n=4 mean=131.5 ms
+unknown user  : n=4 mean=10.7 ms
+difference    : 120.8 ms (12.3x)

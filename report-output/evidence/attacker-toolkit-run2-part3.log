@@ -1,0 +1,39 @@
+################ attack_bruteforce
+======================================================================
+  attack_bruteforce.py -- Credential brute-forcing + enumeration
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:20:36
+======================================================================
+
+1. Account enumeration check: wrong password vs. nonexistent user
+   wrong password: HTTP 401 {'error': 'invalid_credentials', 'message': 'Incorrect username or password.'}
+   no such user:   HTTP 401 {'error': 'invalid_credentials', 'message': 'Incorrect username or password.'}
+
+   (waiting 2s to avoid cross-contaminating with the enumeration check above)
+
+2. Brute-forcing 'naytik' with 13 common passwords, rapid-fire
+   attempt  1 (password='password'): HTTP 401
+   attempt  2 (password='123456'): HTTP 401
+   attempt  3 (password='<demo password>'): HTTP 200
+   attempt  4 (password='admin'): HTTP 401
+   attempt  5 (password='letmein'): HTTP 401
+   attempt  6 (password='qwerty'): HTTP 401
+   attempt  7 (password='welcome'): HTTP 401
+   attempt  8 (password='monkey'): HTTP 401
+   attempt  9 (password='dragon'): HTTP 429 <-- BLOCKED
+   attempt 10 (password='master'): HTTP 429 <-- BLOCKED
+   attempt 11 (password='naytik2023'): HTTP 429 <-- BLOCKED
+   attempt 12 (password='Password1!'): HTTP 429 <-- BLOCKED
+   attempt 13 (password='changeme'): HTTP 429 <-- BLOCKED
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Wrong password and nonexistent user return identical responses (no enumeration)
+    status match=True, body match=True
+[PASS (attack blocked)] Rapid-fire login attempts trigger rate limiting before exhausting the password list
+    First 429 at attempt #9
+----------------------------------------------------------------------
+2/2 attacks blocked
+======================================================================
+[exit status: 0]

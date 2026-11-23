@@ -1,0 +1,31 @@
+Login latency after the D-01 fix. Wrong password, 4 attempts per username per round (below the 5-failure lock), alternating real and unknown names. curl time_total, TLS handshake included for both.
+  rishi              0.095s  HTTP 401
+  no-such-user-a-1   0.059s  HTTP 401
+  rishi              0.057s  HTTP 401
+  no-such-user-a-2   0.056s  HTTP 401
+  rishi              0.055s  HTTP 401
+  no-such-user-a-3   0.057s  HTTP 401
+  rishi              0.060s  HTTP 401
+  no-such-user-a-4   0.058s  HTTP 401
+  admin              0.095s  HTTP 401
+  no-such-user-b-1   0.056s  HTTP 401
+  admin              0.054s  HTTP 401
+  no-such-user-b-2   0.055s  HTTP 401
+  admin              0.056s  HTTP 401
+  no-such-user-b-3   0.055s  HTTP 401
+  admin              0.056s  HTTP 401
+  no-such-user-b-4   0.054s  HTTP 401
+existing users: n=8 mean=66.2 ms (min 54.4, max 95.4)
+unknown users : n=8 mean=56.2 ms (min 54.3, max 58.6)
+ratio existing/unknown: 1.18x   (before the fix: 131.5 ms vs 10.7 ms = 12.3x)
+non-401 responses: 0
+medians: existing 56.5 ms, unknown 56.0 ms, ratio 1.01x (one slower existing-user request of 95.0 ms raises the mean; the two ranges overlap completely)
+  no-such-user-c-1 0.067586 401
+  rishi 0.054814 401
+  no-such-user-c-2 0.054865 401
+  rishi 0.002524 423
+  no-such-user-c-3 0.055833 401
+  rishi 0.002880 423
+  no-such-user-c-4 0.055484 401
+  rishi 0.002591 423
+summary: the two 95 ms samples were the first request of each round, after a minute of idle. In the control round above (unknown name first) the first request was the slow one (67.6 ms against about 55 ms), so this is a first-request-after-idle effect, not a difference between real and unknown users. Medians over both rounds: existing 56.5 ms, unknown 56.0 ms (1.01x). In the control round "rishi" reached its 5th failure inside 15 minutes and was locked (HTTP 423 in about 2.5 ms), as designed.

@@ -1,0 +1,148 @@
+
+######################################################################
+# Running attack_replay.py
+######################################################################
+======================================================================
+  attack_replay.py -- Replay a captured, validly-signed request
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:15:51
+======================================================================
+NOTE: hmac-signing.key is not present locally (expected after Week 5's
+vault-init.sh shreds it). This script demonstrates the replay attack
+using a copy of the key obtained the same way a real attacker who'd
+compromised Vault access would -- for this demo, set HMAC_KEY_OVERRIDE
+or re-run vault-init.sh's push step without the shred step to test this.
+
+######################################################################
+# Running attack_token_forgery.py
+######################################################################
+======================================================================
+  attack_token_forgery.py -- JWT forgery techniques
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:15:52
+======================================================================
+NOTE: jwt-signing.pub not present locally (expected after Week 5 shreds it).
+Skipping algorithm-confusion test, which needs the PUBLIC key (not secret,
+but needed here to construct the attack payload). Other tests still run.
+
+1. Wrong-key forgery: sign a token with an attacker-generated RSA key
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+2. 'alg: none' attack: unsigned token claiming no signature is required
+   -> HTTP 401: {"error":"unauthorized","message":"Invalid or expired token."}
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Wrong-key forgery (attacker's own RSA keypair) is rejected
+    HTTP 401 -- token claimed admin scope, signed with a key the server never trusted
+[PASS (attack blocked)] 'alg: none' token is rejected (algorithm is pinned server-side)
+    HTTP 401 -- gateway pins algorithms=['RS256'] in jwt.verify(), so 'none' is never accepted
+----------------------------------------------------------------------
+2/2 attacks blocked
+======================================================================
+
+######################################################################
+# Running attack_bruteforce.py
+######################################################################
+======================================================================
+  attack_bruteforce.py -- Credential brute-forcing + enumeration
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:15:52
+======================================================================
+
+1. Account enumeration check: wrong password vs. nonexistent user
+   wrong password: HTTP 401 {'error': 'invalid_credentials', 'message': 'Incorrect username or password.'}
+   no such user:   HTTP 401 {'error': 'invalid_credentials', 'message': 'Incorrect username or password.'}
+
+   (waiting 2s to avoid cross-contaminating with the enumeration check above)
+
+2. Brute-forcing 'naytik' with 13 common passwords, rapid-fire
+   attempt  1 (password='password'): HTTP 401
+   attempt  2 (password='123456'): HTTP 401
+   attempt  3 (password='<demo password>'): HTTP 200
+   attempt  4 (password='admin'): HTTP 401
+   attempt  5 (password='letmein'): HTTP 401
+   attempt  6 (password='qwerty'): HTTP 401
+   attempt  7 (password='welcome'): HTTP 401
+   attempt  8 (password='monkey'): HTTP 401
+   attempt  9 (password='dragon'): HTTP 429 <-- BLOCKED
+   attempt 10 (password='master'): HTTP 429 <-- BLOCKED
+   attempt 11 (password='naytik2023'): HTTP 429 <-- BLOCKED
+   attempt 12 (password='Password1!'): HTTP 429 <-- BLOCKED
+   attempt 13 (password='changeme'): HTTP 429 <-- BLOCKED
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Wrong password and nonexistent user return identical responses (no enumeration)
+    status match=True, body match=True
+[PASS (attack blocked)] Rapid-fire login attempts trigger rate limiting before exhausting the password list
+    First 429 at attempt #9
+----------------------------------------------------------------------
+2/2 attacks blocked
+======================================================================
+
+(pausing 15s to let the auth rate limiter window from the
+ brute-force test above clear before the next script logs in...)
+
+######################################################################
+# Running attack_injection.py
+######################################################################
+======================================================================
+  attack_injection.py -- Structural validation + content-pattern handling
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:16:10
+======================================================================
+   (login rate-limited, waiting 42s before retry 2/3...)
+ERROR: could not log in as naytik -- is the stack running?
+
+######################################################################
+# Running attack_mitm_downgrade.py
+######################################################################
+/private/tmp/claude-501/-Users-naytikgoyal--claude-spares-spare-nPXQeR/20fbe208-e352-431d-b787-3773582913ae/scratchpad/run-copy/attacker-toolkit/attack_mitm_downgrade.py:54: DeprecationWarning: ssl.PROTOCOL_TLSv1 is deprecated
+  ctx = ssl.SSLContext(tls_version)
+/private/tmp/claude-501/-Users-naytikgoyal--claude-spares-spare-nPXQeR/20fbe208-e352-431d-b787-3773582913ae/scratchpad/run-copy/attacker-toolkit/attack_mitm_downgrade.py:54: DeprecationWarning: ssl.PROTOCOL_TLSv1_1 is deprecated
+  ctx = ssl.SSLContext(tls_version)
+======================================================================
+  attack_mitm_downgrade.py -- Plaintext + TLS downgrade attempts
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:16:52
+======================================================================
+
+1. Attempting PLAINTEXT HTTP connection to localhost:3000 (should be refused/reset)
+   Got a response (0 bytes). Looks like valid HTTP: False
+
+2. Attempting to negotiate TLS 1.0
+   Handshake REFUSED (expected): [SSL] internal error (_ssl.c:1082)
+
+2. Attempting to negotiate TLS 1.1
+   Handshake REFUSED (expected): [SSL] internal error (_ssl.c:1082)
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Plaintext HTTP request to the HTTPS port is refused (not parsed as valid HTTP)
+    Server responded with 0 bytes; valid-HTTP-looking: False
+[PASS (attack blocked)] TLS 1.0 handshake is refused
+    SSLError: [SSL] internal error (_ssl.c:1082)
+[PASS (attack blocked)] TLS 1.1 handshake is refused
+    SSLError: [SSL] internal error (_ssl.c:1082)
+----------------------------------------------------------------------
+3/3 attacks blocked
+======================================================================
+
+======================================================================
+COMBINED RESULTS
+======================================================================
+  FAIL  attack_replay.py
+  PASS  attack_token_forgery.py
+  PASS  attack_bruteforce.py
+  FAIL  attack_injection.py
+  PASS  attack_mitm_downgrade.py
+======================================================================
+SOME ATTACKS SUCCEEDED -- SEE OUTPUT ABOVE
+======================================================================
+
+Report uploaded to the Security Dashboard's Attack History panel.
+PYTHONDONTWRITEBYTECODE=1 $SP/test-venv/bin/python run_all.py  0.97s user 0.23s system 1% cpu 1:02.33 total

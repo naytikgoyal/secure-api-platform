@@ -1,0 +1,27 @@
+Loki checks run 2026-10-28T13:02:32Z against the test stack (labels indexed by Promtail: ['container', 'service', 'service_name'])
+
+$ Panel 1 as provisioned (request volume)
+  query: sum by (level) (count_over_time({service=~"gateway|resource-service"} | json [1m]))
+  result: Loki returned a plain-text error instead of JSON:
+    pipeline error: 'JSONParserErr' for series: '{__error__="JSONParserErr", __error_details__="Value looks like object, but can't find closing '}' symbol", container="reportrun-resource-service-1", detec
+    Use a label filter to intentionally skip this error. (e.g | __error__!="JSONParserErr").
+
+$ Panel 1 with an error filter added (diagnostic only, repo unchanged)
+  query: sum by (level) (count_over_time({service=~"gateway|resource-service"} | json | __error__="" [1m]))
+  result: HTTP success, 2 series, total count 501, labels [{'level': 'info'}, {'level': 'warn'}]
+
+$ Panel 2 as provisioned (deny reasons)
+  query: sum by (msg) (count_over_time({service="gateway", level="warn"} | json [1h]))
+  result: HTTP success, 0 series, total count 0, labels []
+
+$ Panel 2 with the level filter after the JSON parser (diagnostic only)
+  query: sum by (msg) (count_over_time({service="gateway"} | json | level="warn" [1h]))
+  result: HTTP success, 3 series, total count 66, labels [{'msg': 'auth denied: invalid/expired token'}, {'msg': 'rate limit exceeded'}, {'msg': 'request completed'}]
+
+$ Panel 3 as provisioned (rate-limit hits)
+  query: sum(count_over_time({service="gateway"} | json | msg="rate limit exceeded" [1m]))
+  result: HTTP success, 1 series, total count 30, labels [{}]
+
+$ Level values written by each logging library (a request without a signature was sent to the Resource Service first)
+  gateway: level values seen = ['info', 'warn']
+  resource-service: level values seen = ['info', 'warning']

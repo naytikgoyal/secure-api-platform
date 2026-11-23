@@ -1,0 +1,144 @@
+################ attack_injection
+======================================================================
+  attack_injection.py -- Structural validation + content-pattern handling
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:18:58
+======================================================================
+
+--- STRUCTURAL violations (must be rejected, 400/422) ---
+
+NoSQL injection operator ($gt) sent as item value
+   -> HTTP 422: {"detail":[{"type":"string_type","loc":["body","item"],"msg":"Input should be a valid string","input":{"$gt":""}}]}
+
+NoSQL injection operator ($ne) sent as item value
+   -> HTTP 422: {"detail":[{"type":"string_type","loc":["body","item"],"msg":"Input should be a valid string","input":{"$ne":null}}]}
+
+Oversized string (10000 chars)
+   -> HTTP 422: {"detail":[{"type":"string_too_long","loc":["body","item"],"msg":"String should have at most 200 characters","input":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+--- CONTENT patterns (correctly accepted as opaque data -- see script docstring) ---
+
+SQLi-looking string (classic)
+   -> HTTP 201: {"id":"6ca7841c-d417-41b9-90ef-c1a9582ef118","item":"'; DROP TABLE orders; --","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:48:59.002732+00:00"}
+
+SQLi-looking string (union)
+   -> HTTP 201: {"id":"95ee5a8b-aa15-449e-ada7-91692d26f8df","item":"' UNION SELECT * FROM users --","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:48:59.023898+00:00"}
+
+XSS-looking string (script tag)
+   -> HTTP 201: {"id":"d894f638-635d-473d-b60e-6058c6950b30","item":"<script>alert('xss')</script>","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:48:59.043311+00:00"}
+
+XSS-looking string (img onerror)
+   -> HTTP 201: {"id":"e806acab-484c-4b72-849c-66c2e5e10da3","item":"<img src=x onerror=alert(1)>","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:48:59.062298+00:00"}
+
+Path traversal-looking string
+   -> HTTP 201: {"id":"fe27b283-f643-4348-88f8-03a792037bcf","item":"../../../../etc/passwd","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:48:59.083459+00:00"}
+
+Format string
+   -> HTTP 201: {"id":"844386ea-25b5-473c-895f-32248ab19640","item":"%s%s%s%s%s%s%s%s","quantity":1,"owner_id":"user-naytik","created_at":"2026-10-28T11:48:59.106225+00:00"}
+
+--- Null byte (the one legitimate content-based rejection rule) ---
+
+Null byte injection
+   -> HTTP 422: {"detail":[{"type":"value_error","loc":["body","item"],"msg":"Value error, must not contain null bytes","input":"item\u0000.txt","ctx":{"error":{}}}]}
+
+--- Other structural checks ---
+
+Negative quantity
+   -> HTTP 422: {"detail":[{"type":"greater_than_equal","loc":["body","quantity"],"msg":"Input should be greater than or equal to 1","input":-999,"ctx":{"ge":1}}]}
+
+Malformed JSON body
+   -> HTTP 400: {"error":"request_failed","message":"Invalid request."}
+
+--- DATABASE LAYER (Sprint 10): does user input ever become SQL? ---
+
+Baseline: naytik has 8 order(s) stored
+
+GET  /orders/<"' OR '1'='1">
+   -> HTTP 404: {"detail":"Order not found"}
+
+GET  /orders/<"'; DROP TABLE orders; --">
+   -> HTTP 404: {"detail":"Order not found"}
+
+GET  /orders/<'1; DELETE FROM orders'>
+   -> HTTP 404: {"detail":"Order not found"}
+
+DELETE /orders/<' OR '1'='1>
+   -> HTTP 404: {"detail":"Order not found"}
+
+Positive control: admin filtering owner_id=user-naytik -> 8 row(s)
+Attack: owner_id=' OR '1'='1 -> HTTP 200, 0 row(s)
+
+After attacks: naytik has 8 order(s) stored (was 8)
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] NoSQL injection operator ($gt) sent as item value is rejected (structural violation)
+    HTTP 422
+[PASS (attack blocked)] NoSQL injection operator ($ne) sent as item value is rejected (structural violation)
+    HTTP 422
+[PASS (attack blocked)] Oversized string (10000 chars) is rejected (structural violation)
+    HTTP 422
+[PASS (attack blocked)] SQLi-looking string (classic) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] SQLi-looking string (union) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] XSS-looking string (script tag) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] XSS-looking string (img onerror) is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] Path traversal-looking string is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] Format string is correctly accepted as inert string data (not executed, stored verbatim)
+    HTTP 201 -- stored verbatim as expected
+[PASS (attack blocked)] Null byte injection is rejected
+    HTTP 422
+[PASS (attack blocked)] Negative quantity is rejected (ge=1 constraint)
+    HTTP 422
+[PASS (attack blocked)] Malformed JSON body is rejected cleanly, not a 500
+    HTTP 400
+[PASS (attack blocked)] Path-parameter injection "' OR '1'='1" returns a clean 404 (reaches the DB layer, matches nothing)
+    HTTP 404 (401 would mean the request was stopped by signature verification instead of the layer under test -- that exact mismatch was a real bug found in Sprint 10)
+[PASS (attack blocked)] Path-parameter injection "'; DROP TABLE orders; --" returns a clean 404 (reaches the DB layer, matches nothing)
+    HTTP 404 (401 would mean the request was stopped by signature verification instead of the layer under test -- that exact mismatch was a real bug found in Sprint 10)
+[PASS (attack blocked)] Path-parameter injection '1; DELETE FROM orders' returns a clean 404 (reaches the DB layer, matches nothing)
+    HTTP 404 (401 would mean the request was stopped by signature verification instead of the layer under test -- that exact mismatch was a real bug found in Sprint 10)
+[PASS (attack blocked)] DELETE with an injected id deletes nothing (404)
+    HTTP 404
+[PASS (attack blocked)] Admin owner_id=' OR '1'='1 returns NO rows (treated as a literal owner name, not SQL)
+    control returned 8 row(s) (proves the table isn't just empty); attack returned 0
+[PASS (attack blocked)] No order was deleted or altered by any injection attempt (table + rows intact)
+    before=8, after=8
+----------------------------------------------------------------------
+18/18 attacks blocked
+======================================================================
+[exit status: 0]
+################ attack_mitm_downgrade
+======================================================================
+  attack_mitm_downgrade.py -- Plaintext + TLS downgrade attempts
+  Target: https://localhost:3000
+  Time:   2026-10-28 17:18:59
+======================================================================
+
+1. Attempting PLAINTEXT HTTP connection to localhost:3000 (should be refused/reset)
+   Got a response (0 bytes). Looks like valid HTTP: False
+
+2. Attempting to negotiate TLS 1.0
+   Handshake REFUSED (expected): [SSL] internal error (_ssl.c:1082)
+
+2. Attempting to negotiate TLS 1.1
+   Handshake REFUSED (expected): [SSL] internal error (_ssl.c:1082)
+
+----------------------------------------------------------------------
+SUMMARY
+----------------------------------------------------------------------
+[PASS (attack blocked)] Plaintext HTTP request to the HTTPS port is refused (not parsed as valid HTTP)
+    Server responded with 0 bytes; valid-HTTP-looking: False
+[PASS (attack blocked)] TLS 1.0 handshake is refused
+    SSLError: [SSL] internal error (_ssl.c:1082)
+[PASS (attack blocked)] TLS 1.1 handshake is refused
+    SSLError: [SSL] internal error (_ssl.c:1082)
+----------------------------------------------------------------------
+3/3 attacks blocked
+======================================================================
+[exit status: 0]
