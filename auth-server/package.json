@@ -1,0 +1,24 @@
+{
+  "name": "auth-server",
+  "version": "0.1.0",
+  "description": "Token issuance service. Issues short-lived RS256 JWTs + rotating refresh tokens.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.3.2",
+    "pino-http": "^10.2.0",
+    "rate-limit-redis": "^4.2.0",
+    "redis": "^4.7.0"
+  }
+}

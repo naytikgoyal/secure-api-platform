@@ -1,0 +1,204 @@
+{
+  "info": {
+    "name": "Secure API Communication Platform - Week 4",
+    "description": "Auth Server (https://localhost:4000) issues tokens; Gateway (https://localhost:3000) proxies to Resource Service (https://localhost:8000) over mTLS with HMAC-signed requests. IMPORTANT: as of Week 4, the Resource Service REQUIRES a client certificate (mTLS) for every connection -- Postman can be configured with a client cert under Settings > Certificates (host: localhost, port: 8000, cert: infra/certs/gateway.crt, key: infra/certs/gateway.key) to hit it directly, but hitting it through the Gateway (as these requests do) doesn't require that, since the Gateway is the one presenting the client cert. Requests to the Resource Service directly (port 8000) without configuring a Postman client cert will fail at the TLS handshake -- that's mTLS working as intended, not a bug.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "auth_url", "value": "https://localhost:4000" },
+    { "key": "base_url", "value": "https://localhost:3000" },
+    { "key": "resource_url", "value": "https://localhost:8000" },
+    { "key": "naytik_token", "value": "" },
+    { "key": "rishi_token", "value": "" },
+    { "key": "naytik_refresh_token", "value": "" },
+    { "key": "order_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth - Login as Naytik (read+write)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('naytik_token', body.access_token);",
+              "pm.collectionVariables.set('naytik_refresh_token', body.refresh_token);",
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{auth_url}}/auth/login",
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"naytik\",\n  \"password\": \"password123\"\n}" }
+      }
+    },
+    {
+      "name": "2. Auth - Login as Rishi (read-only)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('rishi_token', body.access_token);",
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{auth_url}}/auth/login",
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"rishi\",\n  \"password\": \"password123\"\n}" }
+      }
+    },
+    {
+      "name": "3. Auth - Wrong Password (expect 401, generic message)",
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"] }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{auth_url}}/auth/login",
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"naytik\",\n  \"password\": \"wrongpassword\"\n}" }
+      }
+    },
+    {
+      "name": "4. Naytik Creates Order (should succeed, 201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('order_id', body.id);",
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{naytik_token}}" }
+        ],
+        "url": "{{base_url}}/orders",
+        "body": { "mode": "raw", "raw": "{\n  \"item\": \"Mechanical Keyboard\",\n  \"quantity\": 1\n}" }
+      }
+    },
+    {
+      "name": "5. Naytik Reads Her Own Order (expect 200)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{naytik_token}}" }],
+        "url": "{{base_url}}/orders/{{order_id}}"
+      }
+    },
+    {
+      "name": "6. BOLA TEST - Rishi Reads Naytik's Order (expect 403)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 403 - BOLA blocked', () => pm.response.to.have.status(403));"] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{rishi_token}}" }],
+        "url": "{{base_url}}/orders/{{order_id}}"
+      }
+    },
+    {
+      "name": "7. SCOPE TEST - Rishi (read-only) Tries to Create Order (expect 403, blocked at Gateway)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 403 - insufficient scope', () => pm.response.to.have.status(403));"] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{rishi_token}}" }
+        ],
+        "url": "{{base_url}}/orders",
+        "body": { "mode": "raw", "raw": "{\n  \"item\": \"Should Be Blocked\",\n  \"quantity\": 1\n}" }
+      }
+    },
+    {
+      "name": "8. DEFENSE IN DEPTH - Rishi Hits Resource Service DIRECTLY, Tries Write (expect 403)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 403 even bypassing Gateway', () => pm.response.to.have.status(403));"] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{rishi_token}}" }
+        ],
+        "url": "{{resource_url}}/orders",
+        "body": { "mode": "raw", "raw": "{\n  \"item\": \"Direct Bypass Attempt\",\n  \"quantity\": 1,\n  \"owner_id\": \"user-rishi\"\n}" }
+      }
+    },
+    {
+      "name": "9. No Token (expect 401)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"] } }
+      ],
+      "request": { "method": "GET", "url": "{{base_url}}/orders" }
+    },
+    {
+      "name": "10. Forged/Garbage Token (expect 401)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"] } }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer this.is.forged" }],
+        "url": "{{base_url}}/orders"
+      }
+    },
+    {
+      "name": "11. Refresh Token (rotates - old one becomes invalid)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('naytik_refresh_token', body.refresh_token);",
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{auth_url}}/auth/refresh",
+        "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{naytik_refresh_token}}\"\n}" }
+      }
+    },
+    {
+      "name": "12. Reuse OLD Refresh Token (expect 401 - rotation working)",
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('Status is 401 - old token rejected', () => pm.response.to.have.status(401));"] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{auth_url}}/auth/refresh",
+        "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{naytik_refresh_token}}\"\n}" }
+      }
+    }
+  ]
+}
+

@@ -1,36 +1,240 @@
 # infra/docker-compose.yml
+# Week 5: HashiCorp Vault for secrets management + Redis-backed rate limiting.
+# Run infra/scripts/gen-certs.sh BEFORE `docker compose up` the first time
+# (and any time you want fresh certs/keys). Then, on first boot, run
+# infra/scripts/vault-init.sh AFTER Vault is up but BEFORE the other services
+# start, so it can push secrets into Vault for them to fetch. See README.md
+# for the exact ordered sequence.
+
+networks:
+  secure-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
 
 services:
-  gateway:
-    image: alpine:latest
-    command: tail -f /dev/null
-    container_name: api_gateway
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: vault_secrets
+    cap_add:
+      - IPC_LOCK  # Vault wants to lock memory pages so secrets never get swapped to disk
+    ports:
+      - "8200:8200"
+    environment:
+      # DEV MODE ONLY: auto-unseals with a fixed root token, stores everything
+      # in-memory (wiped on restart). This is intentional for a local capstone
+      # demo -- see docs/key-rotation-runbook.md for what changes in production
+      # (auto-unseal via cloud KMS, AppRole auth instead of a static root token,
+      # persistent storage backend).
+      - VAULT_DEV_ROOT_TOKEN_ID=dev-only-root-token-do-not-use-in-prod
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_ADDR=http://127.0.0.1:8200
+    networks:
+      - secure-net
     healthcheck:
-      test: ["CMD", "echo", "Gateway is alive"]
+      test: ["CMD", "vault", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - CERT_DIR=/certs
+      - RESOURCE_SERVICE_HOST=resource-service
+      - RESOURCE_SERVICE_PORT=8000
+      - REDIS_HOST=redis
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-only-root-token-do-not-use-in-prod
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      - secure-net
+    healthcheck:
+      test: ["CMD", "curl", "-fk", "https://localhost:3000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+      resource-service:
+        condition: service_started
 
   resource-service:
-    image: alpine:latest
-    command: tail -f /dev/null
+    build:
+      context: ../resource-service
+      dockerfile: Dockerfile
     container_name: resource_service
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - PORT=8000
+      - CERT_DIR=/certs
+      - REDIS_HOST=redis
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-only-root-token-do-not-use-in-prod
+      # DB host/name are not secret; the username + password are fetched from
+      # Vault at startup (secret/db-creds) -- deliberately NOT set here.
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=orders
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      - secure-net
     healthcheck:
-      test: ["CMD", "echo", "Resource Service is alive"]
+      # NOTE: /health is exempt from HMAC signature checks (see main.py middleware),
+      # but mTLS is enforced at the TLS layer for ALL paths including /health --
+      # so this healthcheck must present the resource-service's own cert as a
+      # client cert (using it against itself is fine; it's just proving "I hold
+      # a cert signed by our CA," same as the Gateway does for real requests).
+      test: ["CMD", "curl", "-f", "--cert", "/certs/resource-service.crt", "--key", "/certs/resource-service.key", "--cacert", "/certs/ca.crt", "https://localhost:8000/health"]
       interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: orders_postgres
+    # NO "ports:" section on purpose. Redis and Vault publish ports to your
+    # host for learning/debugging convenience; the database does not. It is
+    # reachable ONLY from other containers on secure-net (i.e. the Resource
+    # Service). To poke at it yourself:
+    #   docker compose exec postgres psql -U pgadmin -d orders
+    environment:
+      - POSTGRES_USER=pgadmin
+      - POSTGRES_PASSWORD=${PG_ADMIN_PASSWORD:?run infra/scripts/gen-certs.sh first -- it creates infra/.env}
+      - POSTGRES_DB=orders
+      # Consumed by postgres-init/01-create-app-role.sh (first boot only)
+      - APP_DB_PASSWORD=${DB_PASSWORD:?run infra/scripts/gen-certs.sh first -- it creates infra/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - secure-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pgadmin -d orders"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   auth-server:
-    image: alpine:latest
-    command: tail -f /dev/null
+    build:
+      context: ../auth-server
+      dockerfile: Dockerfile
     container_name: auth_server
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - CERT_DIR=/certs
+      - REDIS_HOST=redis
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-only-root-token-do-not-use-in-prod
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      - secure-net
     healthcheck:
-      test: ["CMD", "echo", "Auth Server is alive"]
+      test: ["CMD", "curl", "-fk", "https://localhost:4000/health"]
       interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
 
   dashboard:
-    image: alpine:latest
-    command: tail -f /dev/null
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
     container_name: security_dashboard
+    ports:
+      - "5173:5173"
+    networks:
+      - secure-net
+    depends_on:
+      - gateway
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+    networks:
+      - secure-net
     healthcheck:
-      test: ["CMD", "echo", "Dashboard is alive"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Loki and Grafana are added in Week 7 -- intentionally not stubbed here so
+  # this file only grows when that week's work actually begins (PRD Section 10).
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: loki_logs
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - secure-net
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: promtail_shipper
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../infra/promtail-config.yaml:/etc/promtail/config.yaml:ro
+    command: -config.file=/etc/promtail/config.yaml
+    networks:
+      - secure-net
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: grafana_dashboards
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ../infra/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
+      - ../infra/grafana-dashboard-provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml:ro
+      - ../infra/grafana-dashboard.json:/var/lib/grafana/dashboards/security-dashboard.json:ro
+    networks:
+      - secure-net
+    depends_on:
+      - loki

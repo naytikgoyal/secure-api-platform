@@ -1,0 +1,24 @@
+title = "gitleaks config for Secure API Communication Platform"
+
+# Extend the default gitleaks ruleset (covers AWS keys, private key blocks,
+# generic API key patterns, etc.) rather than replacing it.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe demo values -- not live credentials for anything"
+regexes = [
+  # Demo user passwords in auth-server/src/users.js and README examples --
+  # these are PLAINTEXT strings used only to bcrypt-hash demo accounts for
+  # local login, never used as a real credential anywhere. Gitleaks's generic
+  # password-pattern rule can flag these; explicitly allowlisting them (rather
+  # than disabling the rule entirely) keeps the rule active for everything else.
+  '''password123''',
+  '''adminpass456''',
+]
+
+paths = [
+  # Certs/keys are gitignored (infra/certs/) and never committed -- this path
+  # entry is defense in depth in case that ever changes accidentally; gitleaks
+  # would still flag a committed .key file even if .gitignore were edited.
+]

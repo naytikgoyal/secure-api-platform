@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gitleaks:
+    name: Secret Scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gitleaks scans full history, not just the latest commit
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Fails the build (non-zero exit) if any secret pattern is found.
+        # See .gitleaks.toml for the (minimal) allowlist -- e.g. the demo
+        # bcrypt password hashes in auth-server/src/users.js, which are
+        # intentionally public/known for local demo login and are NOT live
+        # credentials for anything.
+
+  test-resource-service:
+    name: Resource Service Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: resource-service
+        run: pip install -r requirements.txt
+
+      - name: Run pytest
+        working-directory: resource-service
+        run: pytest tests/ -v
+
+  lint-node-services:
+    name: Node Syntax Check (gateway, auth-server)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Syntax-check gateway
+        working-directory: gateway
+        run: |
+          npm install --omit=dev
+          find src -name "*.js" -exec node --check {} \;
+
+      - name: Syntax-check auth-server
+        working-directory: auth-server
+        run: |
+          npm install --omit=dev
+          find src -name "*.js" -exec node --check {} \;
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Audit gateway dependencies
+        working-directory: gateway
+        run: npm audit --audit-level=high || true
+        # `|| true` for now -- this project is a capstone, not a maintained
+        # package; the point is having the check RUN and be visible in CI
+        # output, not blocking the build on every transitive advisory. A real
+        # production pipeline would remove `|| true` and triage findings.
+
+      - name: Audit auth-server dependencies
+        working-directory: auth-server
+        run: npm audit --audit-level=high || true
